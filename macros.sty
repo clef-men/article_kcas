@@ -1,0 +1,15 @@
+\RequirePackage{xspace}
+
+% ---------------------------------------------------------
+
+\makeatletter
+\DeclareRobustCommand\onedot{\futurelet\@let@token\@onedot}
+\def\@onedot{\ifx\@let@token.\else.\null\fi\xspace}
+
+\def\eg{\emph{e.g}\onedot}
+\def\ie{\emph{i.e}\onedot}
+\def\etc{\emph{etc}\onedot}
+
+% ---------------------------------------------------------
+
+\newcommand{\OCaml}{\textsc{OCaml}\xspace}

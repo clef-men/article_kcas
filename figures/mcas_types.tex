@@ -1,0 +1,34 @@
+\begin{figure}[tp]
+\begin{minipage}[t]{.45\textwidth}
+\begin{lstlisting}
+type 'a loc =
+  { atomic state: 'a state;
+    id: int;
+  }
+and 'a state =
+  { casn: 'a casn;
+    mutable before: 'a;
+    mutable after: 'a;
+  }
+and 'a cas =
+  { loc: 'a loc;
+    state: 'a state;
+  }
+\end{lstlisting}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{.45\textwidth}
+\begin{lstlisting}
+and 'a casn =
+  { atomic status: 'a status;
+    /!proph: (/(ghost_id)/ * bool) proph;!/
+  }
+and 'a status =
+  | Undetermined of 'a cas list
+  | Before
+  | After
+\end{lstlisting}
+\end{minipage}
+\caption{Type definitions for implementing multi-word compare-and-set}
+\label{fig:mcas}
+\end{figure}

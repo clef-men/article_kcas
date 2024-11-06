@@ -1,0 +1,25 @@
+\begin{figure}[tp]
+\begin{lstlisting}[numbers=left]
+let make v id =
+  /(let _gid = ghost_id in)/
+  let casn = { status= After; /!proph= proph!/ } in
+  let state = { casn; before= v; after= v } in
+  Atomic.make { state; id }
+
+let get loc =
+  get_as loc.state
+
+let cas cass =
+  let casn = { status= After; /!proph= proph!/ } in
+  let cass =
+    Lst.map cass (fun (loc, before, after) ->
+      let state = { casn; before; after } in
+      { loc; state }
+    )
+  in
+  casn.status <- Undetermined cass ;
+  determine_aux casn cass
+\end{lstlisting}
+\caption{Implementation of multi-word compare-and-set (2)}
+\label{fig:mcas}
+\end{figure}

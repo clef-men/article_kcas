@@ -1,0 +1,49 @@
+\begin{figure}[tp]
+\begin{lstlisting}[numbers=left]
+let status_to_bool = function
+  | Undetermined _ -> assert false
+  | Before -> false
+  | After -> true
+let finish /(gid)/ casn status =
+  match casn.status with
+  | Before -> false
+  | After -> true
+  | Undetermined _ as old_status ->
+      /!resolve (!/
+        /*Atomic.Loc.compare_and_set [%atomic.loc casn.status] old_status status*/
+      /!) casn.proph (/(gid)/, status_to_bool status) |> ignore!/ ;
+      casn.status == After
+
+let rec determine_as casn cass =
+  /(let gid = ghost_id in)/
+  match cass with
+  | [] ->
+      finish /(gid)/ casn After
+  | cas :: cass' ->
+      let { loc; state } = cas in
+      let state' = /*loc.state*/ in
+      if state == state' then
+        determine_as casn cass'
+      else
+        let v = get_as state' in
+        if get_as state' != state.before then
+          finish /(gid)/ casn Before
+        else
+          match casn.status with
+          | Before -> false
+          | After -> true
+          | Undetermined _ ->
+              if Atomic.Loc.compare_and_set [%atomic.loc loc.state] state' state
+              then determine_as casn cass'
+              else determine_as casn cass
+and get_as state =
+  if determine state.casn then state.after else state.before
+and determine casn =
+  match casn.status with
+  | Before -> false
+  | After -> true
+  | Undetermined cass -> determine_as casn cass
+\end{lstlisting}
+\caption{Implementation of multi-word compare-and-set (1)}
+\label{fig:mcas}
+\end{figure}
