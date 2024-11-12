@@ -1,7 +1,140 @@
 \section{Introduction}
 
-% make sequential algorithm concurrent
+\subsection{Software transactional memory}
+
+Since its introduction in 1995~\cite{DBLP:conf/podc/ShavitT95}, \emph{software transactional memory} (STM) has been implemented in several programming languages, including Haskell~\cite{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\cite{zio} and \Cpp~\cite{cpp_stm_free}.
+
+\begin{minted}{ocaml}
+type ('k, 'v) cache =
+  { mutable space: int;
+    table: ('k, 'k Dllist.node * 'v) Hashtbl.t;
+    order: 'k Dllist.t;
+  }
+\end{minted}
+
+\begin{minted}{ocaml}
+let get_opt { table; order; _ } key =
+  Hashtbl.find_opt table key
+  |> Option.map @@ fun (node, value) ->
+     Dllist.move_l node order ; value
+\end{minted}
+
+\begin{minted}{ocaml}
+type ('k, 'v) cache =
+  { space: int Loc.t;
+    table: ('k, 'k Dllist.Xt.node * 'v) Hashtbl.Xt.t;
+    order: 'k Dllist.Xt.t;
+  }
+\end{minted}
+
+\begin{minted}{ocaml}
+let get_opt ~xt { table; order; _ } key =
+  Hashtbl.Xt.find_opt ~xt table key
+  |> Option.map @@ fun (node, value) ->
+     Dllist.Xt.move_l ~xt node order ; value
+\end{minted}
+
+\subsection{Multi-word compare-and-set algorithm}
+
+Our implementation of STM, as described in more detail in \cref{sec:implementation}, relies on the \emph{multi-word compare-and-set} (MCAS) algorithm, a generalization of the \emph{single-word compare-and-set} (CAS) primitive: given a set of distinct shared-memory locations, each associated to an expected value and a desired value, this algorithm atomically either 1) updates all locations from expected to desired value and succeeds or 2) observes an unexpected value at some location and fails.
+However, while CAS is supported by most architectures, the multi-word variant has to be implemented at the software level.
+
+It has been shown in the literature that MCAS can be made practical~\cite{DBLP:conf/wdag/HarrisFP02}.
+Recent work~\cite{DBLP:conf/wdag/GuerraouiKMZ20} further demonstrated that it can be implemented using only $k + 1$ (where $k$ is the number of shared-memory locations) CAS in the uncontended case.
+
+When building a transaction, loads, stores and more complex memory operations to be committed together atomically are translated to a MCAS operation.
+For instance, consider the two following transactions, involving locations \mintinline{ocaml}{a}, \mintinline{ocaml}{b}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y}:
+
+\medskip
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+let x_to_b_sub_a ~xt () =
+  let a = Xt.get ~xt a
+  let b = Xt.get ~xt b in
+  Xt.set ~xt x (b - a)
+\end{minted}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+let y_to_a_add_b ~xt () =
+  let a = Xt.get ~xt a
+  let b = Xt.get ~xt b in
+  Xt.set ~xt y (a + b)
+\end{minted}
+\end{minipage}
+\medskip
+
+Initially, \mintinline{ocaml}{a} is set to \mintinline{ocaml}{10}, \mintinline{ocaml}{b} to \mintinline{ocaml}{52}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y} to \mintinline{ocaml}{0}.
+When they are committed, these transactions essentially correspond to the following MCAS operations:
+
+\medskip
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+CAS (a, 10, 10)
+CAS (b, 52, 52)
+CAS (x, 0, 42)
+\end{minted}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+CAS (a, 10, 10)
+CAS (b, 52, 52)
+CAS (y, 0, 62)
+\end{minted}
+\end{minipage}
+\medskip
+
+CAS with equal expected and desired values essentially expresses an operation that does not change the logical content of the target location, but only "asserts" that it does not change during the operation.
+
+One might then attempt to perform both MCAS operations in parallel.
+Unfortunately, this is not allowed by the MCAS implementations we are aware of.
+Indeed, every CAS actually updates the target locations.
+This means two things: 1) CAS operations targeting the same location can only execute sequentially; 2) CAS operations, even those that do not change the logical content of a location, cause contention as after the operation only the cache of the writer will have a valid copy of the location.
+
+To address this issue, we extend upon the state-of-the-art algorithm~\cite{DBLP:conf/wdag/GuerraouiKMZ20} to allow read-only CMP operations to be expressed directly and not write into memory.
+For instance, the two above transactions would generate the following operations, that can be run in parallel:
+
+\medskip
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+CMP (a, 10)
+CMP (b, 52)
+CAS (x, 0, 42)
+\end{minted}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{.45\textwidth}
+\begin{minted}{ocaml}
+CMP (a, 10)
+CMP (b, 52)
+CAS (y, 0, 62)
+\end{minted}
+\end{minipage}
+\medskip
+
+There is one drawback, however.
+This new algorithm is \emph{obstruction-free} but not \emph{lock-free} like the original one.
+In particular, two MCAS involving a common location may basically cancel each other indefinitely.
+To get the best of both worlds, we first attempt the MCAS operations in obstruction-free mode (CMP and CAS) and switch to lock-free mode (CAS only) after a number of failed attempts.
+The resulting algorithm therefore guarantees lock-free behavior.
+
+\subsection{Verified multi-word compare-and-set algorithm}
+
+% RDCSS auxiliary algorithm/operation
+% \cite{DBLP:journals/pacmpl/JungLPRTDJ20}
+% \cite{DBLP:phd/ethos/Vafeiadis08}
+
+% more complex
+%  required to push the prophecy variable technique even further
+
+\subsection{Contributions}
+
 % cache example
-% improvement over multi-word compare-and-set
-% advanced proof techniques, such as logical atomicity and prophecy variables
-% contributions
+
+% make sequential algorithm concurrent
+
+% improvement over MCAS
+
+% contributions: library, MCAS, verification

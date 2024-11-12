@@ -1,0 +1,27 @@
+\begin{figure}[tp]
+\begin{minted}{ocaml}
+module Xt : sig
+  type 'x t
+  val get : xt:'x t -> 'a Loc.t -> 'a
+  val set : xt:'x t -> 'a Loc.t -> 'a -> unit
+  val update : xt:'x t -> 'a Loc.t -> ('a -> 'a) -> 'a
+  val modify : xt:'x t -> 'a Loc.t -> ('a -> 'a) -> unit
+  val exchange : xt:'x t -> 'a Loc.t -> 'a -> 'a
+  val swap : xt:'x t -> 'a Loc.t -> 'a Loc.t -> unit
+  val compare_and_set : xt:'x t -> 'a Loc.t -> 'a -> 'a -> bool
+  val compare_and_swap : xt:'x t -> 'a Loc.t -> 'a -> 'a -> 'a
+  val fetch_and_add : xt:'x t -> int Loc.t -> int -> int
+  val incr : xt:'x t -> int Loc.t -> unit
+  val decr : xt:'x t -> int Loc.t -> unit
+  
+  val post_commit : xt:'x t -> (unit -> unit) -> unit
+  val validate : xt:'x t -> 'a Loc.t -> unit
+  
+  type 'a tx = { tx : 'x. xt:'x t -> 'a } [@@unboxed]
+  val call : xt:'x t -> 'a tx -> 'a
+  val commit : ?timeoutf:float -> ?mode:Mode.t -> 'a tx -> 'a
+end
+\end{minted}
+\caption{Interface for explicit transaction logs (excerpt)}
+\label{fig:xt}
+\end{figure}

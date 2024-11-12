@@ -1,4 +1,26 @@
 \section{Overview of the library}
 
-% API
-% transfer example
+\subsection{Shared memory locations}
+
+\input{figures/loc}
+
+\subsection{Explicit transaction logs}
+
+\input{figures/xt}
+
+transactional API
+
+A transaction is a specification for generating a list of CAS
+
+\begin{minted}{ocaml}
+let transfer ~xt () =
+  let a' = Xt.get ~xt a
+  and b' = Xt.get ~xt b in
+  Xt.set ~xt s (a' + b')
+\end{minted}
+
+\begin{minted}{ocaml}
+Xt.commit { tx = transfer }
+\end{minted}
+
+\subsection{Standard concurrent data structures}

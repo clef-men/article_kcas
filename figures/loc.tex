@@ -1,0 +1,17 @@
+\begin{figure}[tp]
+\begin{minted}{ocaml}
+module Loc : sig
+  type !'a t
+  val make : ?padded:bool -> ?mode:Mode.t -> 'a -> 'a t
+  val get : 'a t -> 'a
+  val set : 'a t -> 'a -> unit
+  val compare_and_set : 'a t -> 'a -> 'a -> bool
+  val exchange : 'a t -> 'a -> 'a
+  val fetch_and_add : int t -> int -> int
+  val incr : int t -> unit
+  val decr : int t -> unit
+end
+\end{minted}
+\caption{Interface for shared-memory locations (excerpt)}
+\label{fig:loc}
+\end{figure}

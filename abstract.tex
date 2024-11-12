@@ -1,0 +1,12 @@
+\OCaml has recently acquired the ability to have multiple domains running in parallel.
+Libraries like \Eio~\cite{eio} and \Domainslib~\cite{domainslib} utilize \OCaml’s support for algebraic effects to provide lightweight threads of control.
+But, while threads are a prerequisite for concurrent programming, we also need mechanisms for threads to communicate and synchronize, such as message queues, mutexes and condition variables.
+However, such mechanisms do not compose and can be challenging to use.
+Transactional memory~\cite{DBLP:conf/podc/ShavitT95} is a more recent abstraction that offers both a relatively familiar programming model and composability.
+
+We present the \Kcas library, a software transactional memory implementation for \OCaml based on a state-of-the-art multi-word compare-and-set algorithm~\cite{DBLP:conf/wdag/GuerraouiKMZ20} enhanced with optimized read-only operations.
+\Kcas features a convenient direct style interface and comes with a library of composable, reasonably well performing, concurrent data structures.
+It supports scheduler friendly blocking and timeouts.
+
+We formally verify the core multi-word compare-and-set algorithm using the \Iris~\cite{DBLP:journals/jfp/JungKJBBD18} concurrent separation logic.
+This effort involves advanced proof techniques, including logical atomicity~\cite{DBLP:conf/popl/JacobsP11} and prophecy variables~\cite{DBLP:journals/pacmpl/JungLPRTDJ20}.

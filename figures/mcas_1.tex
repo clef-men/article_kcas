@@ -1,9 +1,5 @@
 \begin{figure}[tp]
 \begin{lstlisting}[numbers=left]
-let status_to_bool = function
-  | Undetermined _ -> assert false
-  | Before -> false
-  | After -> true
 let finish /(gid)/ casn status =
   match casn.status with
   | Before -> false
@@ -11,7 +7,7 @@ let finish /(gid)/ casn status =
   | Undetermined _ as old_status ->
       /!resolve (!/
         /*Atomic.Loc.compare_and_set [%atomic.loc casn.status] old_status status*/
-      /!) casn.proph (/(gid)/, status_to_bool status) |> ignore!/ ;
+      /!) casn.proph (/(gid)/, status == After) |> ignore!/ ;
       casn.status == After
 
 let rec determine_as casn cass =

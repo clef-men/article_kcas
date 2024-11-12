@@ -1,1 +1,6 @@
 \section{Implementation of the library}
+\label{sec:implementation}
+
+% lock all locations we are trying to update by installing in them a pointer to an internal descriptor that has all the information necessary to complete the operation
+% The presence of this descriptor pointer will signal to other competing operations that an existing operation is ongoing.
+% Other concurrent operations, instead of blindly competing, will actually use the descriptor to help complete the other operation, which will in turn free up the contended word to be operated on again.
