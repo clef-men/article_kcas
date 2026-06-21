@@ -1,3 +1,10 @@
+main.pdf
+main-no-appendices.pdf
+
+/old_version
+diff.tex
+diff.pdf
+
 ## Core latex/pdflatex auxiliary files:
 *.aux
 *.lof
