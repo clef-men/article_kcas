@@ -2,29 +2,28 @@
 \begin{minipage}[t]{.45\textwidth}
 \begin{lstlisting}
 type 'a loc =
-  { atomic state: 'a state;
-    id: int;
-  }
+  'a state Atomic.t
 and 'a state =
-  { casn: 'a casn;
-    mutable before: 'a;
-    mutable after: 'a;
+  { casn: 'a casn
+  ; mutable before: 'a
+  ; mutable after: 'a
   }
 and 'a cas =
-  { loc: 'a loc;
-    state: 'a state;
+  { loc: 'a loc
+  ; state: 'a state
   }
 \end{lstlisting}
 \end{minipage}
-\hfill
 \begin{minipage}[t]{.45\textwidth}
 \begin{lstlisting}
 and 'a casn =
-  { atomic status: 'a status;
-    /!proph: (/(ghost_id)/ * bool) proph;!/
+  { mutable status: 'a status [@atomic]
+  ; /!proph: (/(Zoo.id)/ * bool) Zoo.proph!/
   }
 and 'a status =
   | Undetermined of 'a cas list
+    [@generative]
+    [@zoo.generative_strong]
   | Before
   | After
 \end{lstlisting}
