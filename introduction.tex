@@ -1,6 +1,6 @@
 \section{Introduction}
 
-\subsection{Software transactional memory}
+\subsection{Software Transactional Memory}
 
 Since its introduction in 1995~\cite{DBLP:conf/podc/ShavitT95}, \emph{software transactional memory} (STM) has been implemented in several programming languages, including Haskell~\cite{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\cite{zio} and \Cpp~\cite{cpp_stm_free}.
 
@@ -34,7 +34,7 @@ let get_opt ~xt { table; order; _ } key =
      Dllist.Xt.move_l ~xt node order ; value
 \end{minted}
 
-\subsection{Multi-word compare-and-set algorithm}
+\subsection{Multi-Word Compare-and-Set Algorithm}
 
 Our implementation of STM, as described in more detail in \cref{sec:implementation}, relies on the \emph{multi-word compare-and-set} (MCAS) algorithm, a generalization of the \emph{single-word compare-and-set} (CAS) primitive: given a set of distinct shared-memory locations, each associated to an expected value and a desired value, this algorithm atomically either 1) updates all locations from expected to desired value and succeeds or 2) observes an unexpected value at some location and fails.
 However, while CAS is supported by most architectures, the multi-word variant has to be implemented at the software level.
@@ -120,7 +120,7 @@ In particular, two MCAS involving a common location may basically cancel each ot
 To get the best of both worlds, we first attempt the MCAS operations in obstruction-free mode (CMP and CAS) and switch to lock-free mode (CAS only) after a number of failed attempts.
 The resulting algorithm therefore guarantees lock-free behavior.
 
-\subsection{Verified multi-word compare-and-set algorithm}
+\subsection{Verified Multi-Word Compare-and-Set Algorithm}
 
 % RDCSS auxiliary algorithm/operation
 % \cite{DBLP:journals/pacmpl/JungLPRTDJ20}
