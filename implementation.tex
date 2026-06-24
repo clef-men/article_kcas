@@ -10,6 +10,8 @@
 \subsection{Multi-Word Compare-and-Set Algorithm}
 
 \input{figures/loc_representation}
+\input{figures/mcas_success}
+\input{figures/mcas_failure}
 
 Our implementation of STM, as described in more detail in \cref{sec:implementation}, relies on the \emph{multi-word compare-and-set} (MCAS) algorithm, a generalization of the \emph{single-word compare-and-set} (CAS) primitive: given a set of distinct shared-memory locations, each associated to an expected value and a desired value, this algorithm atomically either 1) updates all locations from expected to desired value and succeeds or 2) observes an unexpected value at some location and fails.
 However, while CAS is supported by most architectures, the multi-word variant has to be implemented at the software level.
