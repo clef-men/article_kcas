@@ -1,0 +1,87 @@
+\begin{figure}
+\begin{mathpar}
+    \iPersistent{(\locInv\ \zooLoc\ \iIname)}
+  \\
+    \infer[pointsto-exclusive]{
+        \zooLoc \iPointstoTwo \zooVal_1
+      \\
+        \zooLoc \iPointstoTwo \zooVal_2
+    }{
+      \iFalse
+    }
+  \\
+    \iSpec[
+      lab=make-spec
+    ]{
+      \iTrue
+    }{
+      \c{make}\ \zooVal
+    }[
+      \zooLoc
+    ]{
+      \locInv\ \zooLoc\ \iIname \iSep \\
+      \zooLoc \iPointstoTwo \zooVal
+    }
+  \and
+    \iAspec[
+      lab=get-spec,
+      mask=\iIname
+    ]{
+      \locInv\ \zooLoc\ \iIname
+    }[
+      \zooVal
+    ]{
+      \zooLoc \iPointstoTwo \zooVal
+    }{
+      \c{get}\ \zooLoc
+    }{
+      \zooLoc \iPointstoTwo \zooVal
+    }[
+      \zooValTwo
+    ]{
+      \zooVal \similar \zooValTwo
+    }
+  \and
+    \iAspec[
+      lab=cas-spec,
+      mask=\iIname
+    ]{
+      \iBigSep_{\zooLoc \in \zooLoc{}s}
+        \locInv\ \zooLoc\ \iIname
+    }[
+      \zooVals
+    ]{
+      \iBigSep_{\zooLoc, \zooVal \in \zooLoc{}s, \zooVals}
+        \zooLoc \iPointstoTwo \zooVal
+    }{
+      \c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}
+    }[
+      \zooBool
+    ]{
+      \myif{
+        \zooBool
+      }{
+        \begin{inbox}
+          \zooVals \similar \v{befores} \iSep \\
+          \iBigSep_{\zooLoc, \zooVal \in \zooLoc{}s, \v{afters}}
+            \zooLoc \iPointstoTwo \zooVal
+        \end{inbox}
+      }{
+        \begin{inbox}
+          \Exists i\ \zooVal\ \v{before}. \\
+          \mapLookup{\zooVals}{i} = \Some{\zooVal} \iSep \\
+          \mapLookup{\v{befores}}{i} = \Some{\v{before}} \iSep \\
+          \zooVal \nonsimilar \v{before} \iSep \\
+          \iBigSep_{\zooLoc, \zooVal \in \zooLoc{}s, \zooVals}
+            \zooLoc \iPointstoTwo \zooVal
+        \end{inbox}
+      }
+    }[
+      \v{res}
+    ]{
+      \v{res} = \zooBool
+    }
+\end{mathpar}
+\caption{MCAS: Specification}
+\label{fig:mcas_spec}
+\end{figure}
