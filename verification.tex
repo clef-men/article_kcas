@@ -3,22 +3,30 @@
 \input{figures/mcas_types}
 \input{figures/mcas_code_1}
 \input{figures/mcas_code_2}
-\input{figures/mcas_spec}
+
+% code
+% + clear stale values to prevent memory leaks
+% + prophecy variables (Zoo.proph, Zoo.resolve, Zoo.resolve_with)
+% + ghost identifiers (Zoo.id)
 
 \subsection{Specification}
 
-% specs
+\input{figures/mcas_spec}
 
-\subsection{Resource Algebras}
+% physical equality
 
-\subsection{Proof Sketch}
+\subsection{Challenges}
 
-% finish specs
+\paragraph{Mutually recursive invariants}
 
-\subsection{Support for Read-Only Operations}
+\paragraph{Logical state}
 
-% modified code
+\paragraph{External linearization}
 
-\subsection{Physical Equality Taken Seriously}
+\paragraph{Global prophecy variable}
 
-% specs
+\paragraph{Local prophecy variable}
+
+\paragraph{MCAS history}
+
+\subsection{Read-Only Operations}
