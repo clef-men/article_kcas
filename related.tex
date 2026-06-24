@@ -1,6 +1,6 @@
 \section{Related Work}
 
-% STM
+\paragraph{Software transactional memory}
 
 % \cite{DBLP:conf/podc/ShavitT95}
 
@@ -8,24 +8,18 @@
 % \cite{DBLP:conf/flops/DiscoloHMJS06}
 % \cite{DBLP:conf/haskell/LeYF16}
 
-% multi-word compare-and-set
+\paragraph{Multi-word compare-and-set}
 
 % \cite{DBLP:conf/wdag/HarrisFP02}
 % \cite{DBLP:conf/wdag/GuerraouiKMZ20}
 
-% verification of lock-free algorithms
+We believe that our work is the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
+We are aware of one closely related line of work.
+\Citet{DBLP:phd/ethos/Vafeiadis08} sketches a proof of the RDCSS and MCAS algorithms of \citet{DBLP:conf/wdag/HarrisFP02}.
+However, \citet{DBLP:journals/pacmpl/JungLPRTDJ20} show that his proof of RDCSS is flawed and verify it in \Iris, using prophecy variables; they also verify both RDCSS and MCAS using \VeriFast~\citep{DBLP:conf/nfm/JacobsSPVPP11}.
 
-% \cite{DBLP:conf/cpp/VindumB21}
-% \cite{DBLP:conf/cpp/VindumFB22}
-% \cite{DBLP:conf/cpp/CarbonneauxZKON22}
-% \cite{DBLP:journals/pacmpl/MevelJ21}
-% \cite{SomersK24}
-
-% prophecy variables
+\paragraph{Prophecy variables}
 
 % \cite{DBLP:journals/pacmpl/JungLPRTDJ20}
 % \cite{DBLP:phd/ethos/Vafeiadis08}
-
-% MVCC
-
 % \cite{DBLP:conf/osdi/Chang0STKZ23}
