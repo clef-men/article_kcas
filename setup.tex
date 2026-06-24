@@ -1,15 +1,33 @@
-\usepackage[T1]{fontenc}
 \usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
 
 %--------------------------------------
 
-% Use the natbib citations commands, starred version (all authors):
-% - \citet*{...} to cite a reference as a word of the sentence
-% - \citep*{...} to cite a reference as a parenthetical remark
-\usepackage{natbib}
+\makeatletter
+\renewcommand*{\fps@figure}{tp}
+\makeatother
 
-% Loading 'url' here ensures that URLs are broken into several lines in the bibliography (see natbib documentation).
-\usepackage{url}
+%--------------------------------------
+
+\usepackage{float}
+
+\usepackage{caption}
+\usepackage{subcaption}
+
+%--------------------------------------
+
+\usepackage{mathtools}
+
+%--------------------------------------
+
+\usepackage{tikz}
+
+\usetikzlibrary{arrows.meta}
+\usetikzlibrary{automata}
+\usetikzlibrary{decorations.pathreplacing}
+\usetikzlibrary{graphs}
+\usetikzlibrary{positioning}
+\usetikzlibrary{quotes}
 
 %--------------------------------------
 
