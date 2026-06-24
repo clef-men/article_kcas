@@ -2,35 +2,35 @@
 
 Since its introduction in 1995~\cite{DBLP:conf/podc/ShavitT95}, \emph{software transactional memory} (STM) has been implemented in several programming languages, including Haskell~\cite{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\cite{zio} and \Cpp~\cite{cpp_stm_free}.
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 type ('k, 'v) cache =
   { mutable space: int;
     table: ('k, 'k Dllist.node * 'v) Hashtbl.t;
     order: 'k Dllist.t;
   }
-\end{minted}
+\end{ocamlcode}
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 let get_opt { table; order; _ } key =
   Hashtbl.find_opt table key
   |> Option.map @@ fun (node, value) ->
      Dllist.move_l node order ; value
-\end{minted}
+\end{ocamlcode}
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 type ('k, 'v) cache =
   { space: int Loc.t;
     table: ('k, 'k Dllist.Xt.node * 'v) Hashtbl.Xt.t;
     order: 'k Dllist.Xt.t;
   }
-\end{minted}
+\end{ocamlcode}
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 let get_opt ~xt { table; order; _ } key =
   Hashtbl.Xt.find_opt ~xt table key
   |> Option.map @@ fun (node, value) ->
      Dllist.Xt.move_l ~xt node order ; value
-\end{minted}
+\end{ocamlcode}
 
 \paragraph{Contributions}
 

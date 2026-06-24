@@ -20,21 +20,21 @@ For instance, consider the two following transactions, involving locations \mint
 
 \medskip
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 let x_to_b_sub_a ~xt () =
   let a = Xt.get ~xt a
   let b = Xt.get ~xt b in
   Xt.set ~xt x (b - a)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \hfill
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 let y_to_a_add_b ~xt () =
   let a = Xt.get ~xt a
   let b = Xt.get ~xt b in
   Xt.set ~xt y (a + b)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \medskip
 
@@ -43,19 +43,19 @@ When they are committed, these transactions essentially correspond to the follow
 
 \medskip
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 CAS (a, 10, 10)
 CAS (b, 52, 52)
 CAS (x, 0, 42)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \hfill
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 CAS (a, 10, 10)
 CAS (b, 52, 52)
 CAS (y, 0, 62)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \medskip
 
@@ -71,19 +71,19 @@ For instance, the two above transactions would generate the following operations
 
 \medskip
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 CMP (a, 10)
 CMP (b, 52)
 CAS (x, 0, 42)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \hfill
 \begin{minipage}[t]{.45\textwidth}
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 CMP (a, 10)
 CMP (b, 52)
 CAS (y, 0, 62)
-\end{minted}
+\end{ocamlcode}
 \end{minipage}
 \medskip
 

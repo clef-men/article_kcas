@@ -1,5 +1,5 @@
 \begin{figure}[tp]
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 module Xt : sig
   type 'x t
   val get : xt:'x t -> 'a Loc.t -> 'a
@@ -21,7 +21,7 @@ module Xt : sig
   val call : xt:'x t -> 'a tx -> 'a
   val commit : ?timeoutf:float -> ?mode:Mode.t -> 'a tx -> 'a
 end
-\end{minted}
+\end{ocamlcode}
 \caption{Interface for explicit transaction logs (excerpt)}
 \label{fig:xt_interface}
 \end{figure}

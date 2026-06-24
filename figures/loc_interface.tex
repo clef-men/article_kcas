@@ -1,5 +1,5 @@
 \begin{figure}[tp]
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 module Loc : sig
   type !'a t
   val make : ?padded:bool -> ?mode:Mode.t -> 'a -> 'a t
@@ -11,7 +11,7 @@ module Loc : sig
   val incr : int t -> unit
   val decr : int t -> unit
 end
-\end{minted}
+\end{ocamlcode}
 \caption{Interface for shared-memory locations (excerpt)}
 \label{fig:loc_interface}
 \end{figure}

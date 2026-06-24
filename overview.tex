@@ -12,15 +12,15 @@ transactional API
 
 A transaction is a specification for generating a list of CAS
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 let transfer ~xt () =
   let a' = Xt.get ~xt a
   and b' = Xt.get ~xt b in
   Xt.set ~xt s (a' + b')
-\end{minted}
+\end{ocamlcode}
 
-\begin{minted}{ocaml}
+\begin{ocamlcode}
 Xt.commit { tx = transfer }
-\end{minted}
+\end{ocamlcode}
 
 \subsection{Standard Concurrent Data Structures}
