@@ -32,19 +32,6 @@ let get_opt ~xt { table; order; _ } key =
      Dllist.Xt.move_l ~xt node order ; value
 \end{ocamlcode}
 
-\paragraph{Contributions}
-
-Our contributions include:
-
-\begin{enumerate}
-  \item
-    Library
-  \item
-    MCAS with CMPs
-  \item
-    Verification
-\end{enumerate}
-
 % make sequential algorithm concurrent
 
 % improvement over MCAS
@@ -55,5 +42,22 @@ Our contributions include:
 % \cite{DBLP:phd/ethos/Vafeiadis08}
 % more complex
 %  required to push the prophecy variable technique even further
+
+\paragraph{Contributions}
+
+In summary, we make the following contributions:
+
+\begin{enumerate}
+  \item
+    We developed the \Kcas library, a lock-free software transactional memory implementation for \OCamlFive.
+    \Kcas provides composable transactions, scheduler friendly modular blocking, timeouts, and comes with a companion library of composable standard data structures: list, stack, queue, doubly-linked list, hash table.
+  \item
+    We implemented in \OCamlFive and improved a state-of-the-art MCAS algorithm~\citep{DBLP:conf/wdag/GuerraouiKMZ20}.
+    In particular, our implementation prevents memory leaks and supports scalable read-only operations.
+  \item
+    We verified the MCAS implementation in the \Rocq prover using the \Zoo framework~\citep{DBLP:journals/pacmpl/AllainS26} based on the \Iris separation logic~\citep{DBLP:journals/jfp/JungKJBBD18}.
+    It is, as far as we are aware, the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
+    Our verification effort involves advanced proofs techniques, especially an interesting use of prophecy variables~\citep{DBLP:journals/pacmpl/JungLPRTDJ20}.
+\end{enumerate}
 
 \paragraph{Artifact}
