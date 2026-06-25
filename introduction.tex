@@ -1,47 +1,107 @@
 \section{Introduction}
 
-Since its introduction in 1995~\cite{DBLP:conf/podc/ShavitT95}, \emph{software transactional memory} (STM) has been implemented in several programming languages, including Haskell~\cite{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\cite{zio} and \Cpp~\cite{cpp_stm_free}.
+Having just recently acquired the ability to have multiple domains running in parallel, \OCaml is in a unique position.
+Instead of having a long history of concurrent multicore programming, we can start afresh.
+What sort of concurrent programming model should \OCaml provide?
 
+Libraries like \Eio~\citep{eio} and \Domainslib~\citep{domainslib} utilize \OCaml’s support for algebraic effects to provide lightweight threads of control.
+But, while threads are a prerequisite for concurrent programming, we also need mechanisms for threads to communicate and synchronize.
+
+Traditional mechanisms for communication and synchronization, such as message queues, mutexes and condition variables, \emph{do not compose}.
+On the other hand, composable message passing models tend to be unfamiliar and challenging to programmers.
+
+\paragraph{Software transactional memory}
+
+Software transactional memory~\citep{DBLP:conf/podc/ShavitT95} (STM) is a more recent abstraction that offers both a relatively familiar programming model and composability.
+Essentially, the idea is to enable the programmer to write \emph{atomic transactions}, \ie sequences of shared-memory accesses executed atomically.
+These transactions can be composed and therefore data structures implemented using this model \emph{do compose}.
+Since its introduction in 1995, STM has been implemented in many programming languages, most notably in \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}.
+
+\paragraph{Our library}
+
+We present the \Kcas library, a lock-free software transactional memory implementation for \OCaml.
+\Kcas features a direct style interface, a retry mechanism, scheduler friendly blocking, and timeouts.
+Additionally, it comes with a companion library of composable concurrent data structures: \KcasData.
+
+Consider the implementation of a least-recently-used (LRU) cache or a bounded associative map.
+A simple approach to implement a LRU cache is to use a hash table and a doubly-linked list and keep track of the amount of space in the cache:
 \begin{ocamlcode}
 type ('k, 'v) cache =
-  { mutable space: int;
-    table: ('k, 'k Dllist.node * 'v) Hashtbl.t;
-    order: 'k Dllist.t;
-  }
+  { space: int ref
+  ; table: ('k, 'k Dllist.node * 'v) Hashtbl.t
+  ; order: 'k Dllist.t }
 \end{ocamlcode}
-
+On a cache lookup the doubly-linked list node corresponding to the accessed key is moved to the left end of the list:
 \begin{ocamlcode}
 let get_opt { table; order; _ } key =
   Hashtbl.find_opt table key
   |> Option.map @@ fun (node, value) ->
      Dllist.move_l node order ; value
 \end{ocamlcode}
-
+On a cache update, in case of overflow, the association corresponding to the node on the right end of the list is dropped:
 \begin{ocamlcode}
-type ('k, 'v) cache =
-  { space: int Loc.t;
-    table: ('k, 'k Dllist.Xt.node * 'v) Hashtbl.Xt.t;
-    order: 'k Dllist.Xt.t;
-  }
+let set { space; table; order; _ } key value =
+  let node =
+    match Hashtbl.find_opt table key with
+    | None ->
+        if 0 = Ref.update space (fun n -> max 0 (n-1)) then
+          Dllist.take_opt_r order |> Option.iter (Hashtbl.remove table) ;
+        Dllist.add_l key order
+    | Some (node, _) ->
+        Dllist.move_l node order ; node
+  in
+  Hashtbl.replace table key (node, value)
 \end{ocamlcode}
 
+While this is a fine sequential implementation, this doesn’t work in a concurrent setting even if the individual operations on lists and hash tables were atomic.
+
+Fortunately, rather than having to wrap the cache implementation behind a mutex and make another individually atomic yet uncomposable data structure, or having to learn a completely different programming model and rewrite the cache implementation, we can use the transactional programming model provided by \Kcas and the transactional data structures provided by \KcasData to trivially convert the previous implementation to a lock-free composable transactional data structure.
+
+To make it so, we simply use transactional versions, \ocamlinline{*.Xt.*}, of operations on the data structures and explicitly pass a transaction log, \ocamlinline{~xt}, to the operations.
+For the \ocamlinline{get_opt} operation we end up with:
 \begin{ocamlcode}
 let get_opt ~xt { table; order; _ } key =
   Hashtbl.Xt.find_opt ~xt table key
   |> Option.map @@ fun (node, value) ->
      Dllist.Xt.move_l ~xt node order ; value
 \end{ocamlcode}
+And the \ocamlinline{set} operation is just as easy to convert to a transactional version.
 
-% make sequential algorithm concurrent
+Transactional operations, like \ocamlinline{get_opt}, can then be performed atomically by committing them:
+\begin{ocamlcode}
+Xt.commit { tx = get_opt cache key }
+\end{ocamlcode}
+Or such operations can be composed further --- just like we
+composed the \ocamlinline{get_opt} operation itself by explicitly passing a transaction log, \ocamlinline{~xt}, through the operations.
 
-% improvement over MCAS
+In addition to the ability to compose atomic operations, similarly to the \Haskell STM~\citep{DBLP:conf/ppopp/HarrisMPH05}, \Kcas also provides the ability to await on arbitrary conditions over the contents of shared-memory locations.
+As an example, we can convert the non-blocking \ocamlinline{get_opt} operation to a blocking get operation as follows:
+\begin{ocamlcode}
+let get ~xt cache key =
+match get_opt ~xt cache key with
+| None -> Retry.later ()
+| Some value -> value
+\end{ocamlcode}
+The \ocamlinline{Retry.later ()} call tells the transaction mechanism of \Kcas that the transaction should only be retried after some shared-memory locations accessed by the transaction have been modified by another thread of execution.
+While the operation is blocked, schedulers like \Eio and \Domainslib are free to run other threads on the domain.
 
-% Verified Multi-Word Compare-and-Set Algorithm
-% RDCSS auxiliary algorithm/operation
-% \cite{DBLP:journals/pacmpl/JungLPRTDJ20}
-% \cite{DBLP:phd/ethos/Vafeiadis08}
-% more complex
-%  required to push the prophecy variable technique even further
+\paragraph{Performance}
+
+Special care was given to efficiency; internally, \Kcas uses splay-trees to represent transaction logs and a state-of-the-art \emph{multi-word compare-and-set} (MCAS) algorithm~\citep{DBLP:conf/wdag/GuerraouiKMZ20}.
+According to our benchmarks, our design performs reasonably well in practice (see \cref{sec:benchmarks}).
+
+\paragraph{Multi-word compare-and-set}
+
+We adapted the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} to \OCaml (see \cref{sec:implementation_mcas}) and to our representation of transaction logs (splay-trees).
+In particular, in order to prevent memory leaks, we have to perform a cleaning phase after completing an MCAS.
+
+However, while MCAS is able to express arbitrary updates of shared memory locations, it is quite common even for mutating operations on data structures to only read some locations.
+Due to the way shared memory works, implementing read-only operations in terms of read-write operations is inefficient and unscalable.
+Consequently, we improved the original MCAS algorithm with \emph{scalable read-only operations}: the states of read-only locations are read at the start of the operation and checked at the end.
+
+We formally verified the resulting MCAS algorithm using the \Zoo framework based on the \Iris separation logic.
+It is, as far as we are aware, the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
+Our verification effort involves advanced proofs techniques, especially an interesting use of prophecy variables~\citep{DBLP:journals/pacmpl/JungLPRTDJ20}.
 
 \paragraph{Contributions}
 
@@ -56,8 +116,4 @@ In summary, we make the following contributions:
     In particular, our implementation prevents memory leaks and supports scalable read-only operations.
   \item
     We verified the MCAS implementation in the \Rocq prover using the \Zoo framework~\citep{DBLP:journals/pacmpl/AllainS26} based on the \Iris separation logic~\citep{DBLP:journals/jfp/JungKJBBD18}.
-    It is, as far as we are aware, the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
-    Our verification effort involves advanced proofs techniques, especially an interesting use of prophecy variables~\citep{DBLP:journals/pacmpl/JungLPRTDJ20}.
 \end{enumerate}
-
-\paragraph{Artifact}
