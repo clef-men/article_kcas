@@ -2,16 +2,20 @@
 \begin{ocamlcode}
 module Loc : sig
   type !'a t
+  
   val make : ?padded:bool -> ?mode:Mode.t -> 'a -> 'a t
   val get : 'a t -> 'a
+  val get_as : ?timeoutf:float -> ('a -> 'b) -> 'a t -> 'b
   val set : 'a t -> 'a -> unit
-  val compare_and_set : 'a t -> 'a -> 'a -> bool
   val exchange : 'a t -> 'a -> 'a
+  val compare_and_set : 'a t -> 'a -> 'a -> bool
   val fetch_and_add : int t -> int -> int
   val incr : int t -> unit
   val decr : int t -> unit
+  val update : ?timeoutf:float -> 'a t -> ('a -> 'a) -> 'a
+  val modify : ?timeoutf:float -> 'a t -> ('a -> 'a) -> unit
 end
 \end{ocamlcode}
-\caption{Interface for shared-memory locations (excerpt)}
+\caption{Interface for shared-memory locations}
 \label{fig:loc_interface}
 \end{figure}
