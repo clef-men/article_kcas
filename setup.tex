@@ -29,6 +29,20 @@
 \usetikzlibrary{positioning}
 \usetikzlibrary{quotes}
 
+\tikzset{
+  every picture/.style={
+    every path/.style={
+      thick
+    }
+  }
+}
+
+\tikzstyle{value_before} = [fill=red, opacity=0.2]
+\tikzstyle{value_after} = [fill=Green, opacity=0.2]
+\tikzstyle{state_before} = [fill=red, opacity=0.5]
+\tikzstyle{state_after} = [fill=Green, opacity=0.5]
+\tikzstyle{state_undetermined} = [fill=orange, opacity=0.5]
+
 %--------------------------------------
 
 \usepackage[capitalize,noabbrev,nameinlink]{cleveref}

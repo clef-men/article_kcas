@@ -1,66 +1,66 @@
-\def\myfigure#1{
+\def\myfigure#1#2{
   \begin{subfigure}{.45\textwidth}
     \centering
     \onlySet{#1}
-    \scalebox{.6}{\begin{tikzpicture}[yscale=-1]
+    \scalebox{.5}{\begin{tikzpicture}[yscale=-1]
       \node at (0.5,0.5) {$\zooLoc_1$} ;
 
       \draw (2,0) grid ++(3,1) ;
-      \draw [fill=Green, opacity=0.2] (2,0) rectangle ++(1,1) ;
+      \draw [value_after] (2,0) rectangle ++(1,1) ;
       \node at (2.5,0.5) {1} ;
-      \draw [fill=Green, opacity=0.2] (3,0) rectangle ++(1,1) ;
+      \draw [value_after] (3,0) rectangle ++(1,1) ;
       \node at (3.5,0.5) {1} ;
       \node at (4.5,0.5) {$\mcas_1$} ;
       \draw [->] (4.5,0) -- ++(0,-1) ;
       \draw (4,-2) grid ++(1,1) ;
-      \draw [fill=Green, opacity=0.5] (4,-2) rectangle ++(1,1) ;
+      \draw [state_after] (4,-2) rectangle ++(1,1) ;
       \node at (4.5,-1.5) {A} ;
 
       \node at (7.5,0.5) {$\zooLoc_2$} ;
 
       \draw (9,0) grid ++(3,1) ;
-      \draw [fill=Green, opacity=0.2] (9,0) rectangle ++(1,1) ;
+      \draw [value_after] (9,0) rectangle ++(1,1) ;
       \node at (9.5,0.5) {3} ;
-      \draw [fill=Green, opacity=0.2] (10,0) rectangle ++(1,1) ;
+      \draw [value_after] (10,0) rectangle ++(1,1) ;
       \node at (10.5,0.5) {3} ;
       \node at (11.5,0.5) {$\mcas_2$} ;
       \draw [->] (11.5,0) -- ++(0,-1) ;
       \draw (11,-2) grid ++(1,1) ;
-      \draw [fill=Green, opacity=0.5] (11,-2) rectangle ++(1,1) ;
+      \draw [state_after] (11,-2) rectangle ++(1,1) ;
       \node at (11.5,-1.5) {A} ;
 
       \draw (2,2) grid ++(3,1) ;
-      \draw [fill=red, opacity=0.2] (2,2) rectangle ++(1,1) ;
+      \draw [value_before] (2,2) rectangle ++(1,1) ;
       \node at (2.5,2.5) {1} ;
       \only<-2>{
-        \draw [fill=Green, opacity=0.2] (3,2) rectangle ++(1,1) ;
+        \draw [value_after] (3,2) rectangle ++(1,1) ;
         \node at (3.5,2.5) {2} ;
       }
-      \only<3->{
-        \draw [fill=red, opacity=0.2] (3,2) rectangle ++(1,1) ;
+      \only<3>{
+        \draw [value_before] (3,2) rectangle ++(1,1) ;
         \node at (3.5,2.5) {1} ;
       }
       \node at (4.5,2.5) {$\mcas$} ;
 
       \draw (9,2) grid ++(3,1) ;
-      \draw [fill=red, opacity=0.2] (9,2) rectangle ++(1,1) ;
+      \draw [value_before] (9,2) rectangle ++(1,1) ;
       \node at (9.5,2.5) {0} ;
-      \only<-3>{
-        \draw [fill=Green, opacity=0.2] (10,2) rectangle ++(1,1) ;
+      \only<-2>{
+        \draw [value_after] (10,2) rectangle ++(1,1) ;
         \node at (10.5,2.5) {2} ;
       }
-      \only<4->{
-        \draw [fill=red, opacity=0.2] (10,2) rectangle ++(1,1) ;
+      \only<3>{
+        \draw [value_before] (10,2) rectangle ++(1,1) ;
         \node at (10.5,2.5) {0} ;
       }
       \node at (11.5,2.5) {$\mcas$} ;
 
       \only<1>{
-        \draw [fill=orange, opacity=0.5] (7,4) rectangle ++(1,1) ;
+        \draw [state_undetermined] (7,4) rectangle ++(1,1) ;
         \node at (7.5,4.5) {U} ;
       }
       \only<2->{
-        \draw [fill=red, opacity=0.5] (7,4) rectangle ++(1,1) ;
+        \draw [state_before] (7,4) rectangle ++(1,1) ;
         \node at (7.5,4.5) {B} ;
       }
 
@@ -76,20 +76,20 @@
 
       \draw [->] (8,0.5) -- ++(1,0) ;
     \end{tikzpicture}}
-    \caption{}
+    \caption{#2}
     \label{fig:mcas_failure_#1}
   \end{subfigure}
 }
 
 \begin{figure}
 \centering
-\myfigure{1}
+\myfigure{1}{Same configuration as \cref{fig:mcas_success_2} except the expected value for $\zooLoc_2$ (0) does not match the current value (3)}
 \hfill
-\myfigure{2}
+\myfigure{2}{Signal state}
 \par\bigskip
-\myfigure{3}
+\myfigure{3}{Clean stale values}
 \hfill
-\myfigure{4}
+\strut
 \caption{MCAS: Failing execution}
 \label{fig:mcas_failure}
 \end{figure}

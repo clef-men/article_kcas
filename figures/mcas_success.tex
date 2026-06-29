@@ -1,70 +1,70 @@
-\def\myfigure#1{
+\def\myfigure#1#2{
   \begin{subfigure}{.45\textwidth}
     \centering
     \onlySet{#1}
-    \scalebox{.6}{\begin{tikzpicture}[yscale=-1]
+    \scalebox{.5}{\begin{tikzpicture}[yscale=-1]
       \node at (0.5,0.5) {$\zooLoc_1$} ;
       
       \draw (2,0) grid ++(3,1) ;
-      \draw [fill=Green, opacity=0.2] (2,0) rectangle ++(1,1) ;
+      \draw [value_after] (2,0) rectangle ++(1,1) ;
       \node at (2.5,0.5) {1} ;
-      \draw [fill=Green, opacity=0.2] (3,0) rectangle ++(1,1) ;
+      \draw [value_after] (3,0) rectangle ++(1,1) ;
       \node at (3.5,0.5) {1} ;
       \node at (4.5,0.5) {$\mcas_1$} ;
       \draw [->] (4.5,0) -- ++(0,-1) ;
       \draw (4,-2) grid ++(1,1) ;
-      \draw [fill=Green, opacity=0.5] (4,-2) rectangle ++(1,1) ;
+      \draw [state_after] (4,-2) rectangle ++(1,1) ;
       \node at (4.5,-1.5) {A} ;
       
       \node at (7.5,0.5) {$\zooLoc_2$} ;
       
       \draw (9,0) grid ++(3,1) ;
-      \draw [fill=Green, opacity=0.2] (9,0) rectangle ++(1,1) ;
+      \draw [value_after] (9,0) rectangle ++(1,1) ;
       \node at (9.5,0.5) {3} ;
-      \draw [fill=Green, opacity=0.2] (10,0) rectangle ++(1,1) ;
+      \draw [value_after] (10,0) rectangle ++(1,1) ;
       \node at (10.5,0.5) {3} ;
       \node at (11.5,0.5) {$\mcas_2$} ;
       \draw [->] (11.5,0) -- ++(0,-1) ;
       \draw (11,-2) grid ++(1,1) ;
-      \draw [fill=Green, opacity=0.5] (11,-2) rectangle ++(1,1) ;
+      \draw [state_after] (11,-2) rectangle ++(1,1) ;
       \node at (11.5,-1.5) {A} ;
       
       \draw (2,2) grid ++(3,1) ;
       \only<1-4>{
-        \draw [fill=red, opacity=0.2] (2,2) rectangle ++(1,1) ;
+        \draw [value_before] (2,2) rectangle ++(1,1) ;
         \node at (2.5,2.5) {1} ;
       }
-      \only<5-6>{
-        \draw [fill=Green, opacity=0.2] (2,2) rectangle ++(1,1) ;
+      \only<5>{
+        \draw [value_after] (2,2) rectangle ++(1,1) ;
         \node at (2.5,2.5) {2} ;
       }
-      \only<1-6>{
-        \draw [fill=Green, opacity=0.2] (3,2) rectangle ++(1,1) ;
+      \only<1-5>{
+        \draw [value_after] (3,2) rectangle ++(1,1) ;
         \node at (3.5,2.5) {2} ;
       }
       \node at (4.5,2.5) {$\mcas$} ;
       
       \draw (9,2) grid ++(3,1) ;
-      \only<1-5>{
-        \draw [fill=red, opacity=0.2] (9,2) rectangle ++(1,1) ;
+      \only<1-4>{
+        \draw [value_before] (9,2) rectangle ++(1,1) ;
         \node at (9.5,2.5) {3} ;
       }
-      \only<6>{
-        \draw [fill=Green, opacity=0.2] (9,2) rectangle ++(1,1) ;
+      \only<5>{
+        \draw [value_after] (9,2) rectangle ++(1,1) ;
         \node at (9.5,2.5) {2} ;
       }
-      \only<1-6>{
-        \draw [fill=Green, opacity=0.2] (10,2) rectangle ++(1,1) ;
+      \only<1-5>{
+        \draw [value_after] (10,2) rectangle ++(1,1) ;
         \node at (10.5,2.5) {2} ;
       }
       \node at (11.5,2.5) {$\mcas$} ;
       
       \only<1-3>{
-        \draw [fill=orange, opacity=0.5] (7,4) rectangle ++(1,1) ;
+        \draw [state_undetermined] (7,4) rectangle ++(1,1) ;
         \node at (7.5,4.5) {U} ;
       }
-      \only<4-6>{
-        \draw [fill=Green, opacity=0.5] (7,4) rectangle ++(1,1) ;
+      \only<4-5>{
+        \draw [state_after] (7,4) rectangle ++(1,1) ;
         \node at (7.5,4.5) {A} ;
       }
       
@@ -74,10 +74,10 @@
       \only<1>{
         \draw [->] (1,0.5) -- ++(1,0) ;
       }
-      \only<2,6>{
+      \only<2>{
         \draw [->, orange] (0.5,1) |- (2,2.5) ;
       }
-      \only<3-6>{
+      \only<3-5>{
         \draw [->] (0.5,1) |- (2,2.5) ;
       }
       
@@ -87,28 +87,28 @@
       \only<3>{
         \draw [->, orange] (7.5,1) |- (9,2.5) ;
       }
-      \only<4-6>{
+      \only<4-5>{
         \draw [->] (7.5,1) |- (9,2.5) ;
       }
     \end{tikzpicture}}
-    \caption{}
+    \caption{#2}
     \label{fig:mcas_success_#1}
   \end{subfigure}
 }
 
 \begin{figure}
 \centering
-\myfigure{1}
+\myfigure{1}{Initial configuration}
 \hfill
-\myfigure{2}
+\myfigure{2}{Lock $\zooLoc_1$}
 \par\bigskip
-\myfigure{3}
+\myfigure{3}{Lock $\zooLoc_2$}
 \hfill
-\myfigure{4}
+\myfigure{4}{Signal state}
 \par\bigskip
-\myfigure{5}
+\myfigure{5}{Clean stale values}
 \hfill
-\myfigure{6}
+\strut
 \caption{MCAS: Successful execution}
 \label{fig:mcas_success}
 \end{figure}
