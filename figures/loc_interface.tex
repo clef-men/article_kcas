@@ -4,6 +4,8 @@ module Loc : sig
   type !'a t
   
   val make : ?padded:bool -> ?mode:Mode.t -> 'a -> 'a t
+  val make_array : ?padded:bool -> ?mode:Mode.t -> int -> 'a -> 'a t array
+  
   val get : 'a t -> 'a
   val get_as : ?timeoutf:float -> ('a -> 'b) -> 'a t -> 'b
   val set : 'a t -> 'a -> unit
