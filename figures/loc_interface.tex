@@ -7,14 +7,21 @@ module Loc : sig
   val make_array : ?padded:bool -> ?mode:Mode.t -> int -> 'a -> 'a t array
   
   val get : 'a t -> 'a
-  val get_as : ?timeoutf:float -> ('a -> 'b) -> 'a t -> 'b
   val set : 'a t -> 'a -> unit
   val exchange : 'a t -> 'a -> 'a
   val compare_and_set : 'a t -> 'a -> 'a -> bool
   val fetch_and_add : int t -> int -> int
   val incr : int t -> unit
   val decr : int t -> unit
+  
+  (* [get_as f l] is equivalent to [f (get l)] except [f] may raise the
+     exception [Retry.Later] to retry after [l] has been modified. *)
+  val get_as : ?timeoutf:float -> ('a -> 'b) -> 'a t -> 'b
+  (* [update l f] repeats [let x = get l in compare_and_set l x (f x)] until it
+     succeeds. [f] may raise the exception [Retry.Later] to retry after [l] has
+     been modified. *)
   val update : ?timeoutf:float -> 'a t -> ('a -> 'a) -> 'a
+  (* [modify l f] is equivalent to [update l f |> ignore]. *)
   val modify : ?timeoutf:float -> 'a t -> ('a -> 'a) -> unit
 end
 \end{ocamlcode}

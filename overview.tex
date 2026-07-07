@@ -1,50 +1,185 @@
 \section{\Kcas Overview}
+\label{sec:overview}
+
+\Kcas provides two main abstractions: (1) \emph{shared-memory locations} can be created and manipulated using the \ocamlinline{Loc} module; (2) \emph{explicit transaction logs} allow writing transactions over shared-memory locations using the \ocamlinline{Xt} module.
+The following sections discuss them in turn.
 
 \subsection{Shared-Memory Locations}
 
 \input{figures/loc_interface}
 
-% Kcas provides an abstraction of shared memory locations or the Loc module, which is essentially a superset of the OCaml Stdlib Atomic module
+Similarly to \c{TVar} in \Haskell's STM, \Kcas provides an abstraction of shared-memory locations through the \ocamlinline{Loc} module (\cref{fig:loc_interface}).
+It is essentially a superset of the \ocamlinline{Atomic} module from the standard library.
+Thus, an application that uses \ocamlinline{Atomic} and needs to perform atomic operations over multiple locations can simply rebind \ocamlinline{module Atomic = Loc} and then use the \ocamlinline{Xt} API (see \cref{sec:overview_xt}).
+This should not be done just-in-case, however, as it does naturally have higher overhead than \ocamlinline{Atomic}.
 
-\subsection{Direct Style Transactional Interface}
+\subsection{Direct-Style Transactional Interface}
+\label{sec:overview_xt}
 
 \input{figures/xt_interface}
 
-transactional API
+Transactions can be constructed and executed using the \ocamlinline{Xt} module (\cref{fig:xt_interface}).
+In \Kcas, a transaction is essentially a function of type \ocamlinline{xt:Xt.t -> 'a}, where \ocamlinline{xt} represents the \emph{explicit transaction log}.
+As a result, we get sequential and conjunctive composition of transactions for free:
 
-A transaction is a specification for generating a list of CAS
-
+\smallskip
+\begin{minipage}[t]{.45\textwidth}
 \begin{ocamlcode}
-let transfer ~xt () =
-  let a' = Xt.get ~xt a
-  and b' = Xt.get ~xt b in
-  Xt.set ~xt s (a' + b')
+let bind ~xt tx1 tx2 =
+  let x = tx1 ~xt in tx2 ~xt x
+\end{ocamlcode}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{.45\textwidth}
+\begin{ocamlcode}
+let pair ~xt tx1 tx2 =
+  (tx1 ~xt, tx2 ~xt)
+\end{ocamlcode}
+\end{minipage}
+\smallskip
+
+The log records transactional operations like \ocamlinline{Xt.get} and \ocamlinline{Xt.set}.
+For example, we can write a transaction to remove a node from a doubly-linked circular list as follows:
+\begin{ocamlcode}
+let remove ~xt node =
+  (* Read pointers to the predecessor and successor nodes: *)
+  let pred = Xt.get ~xt node.pred and succ = Xt.get ~xt node.succ in
+  (* Update pointers in this node: *)
+  Xt.set ~xt node.succ node ; Xt.set ~xt node.pred node ;
+  (* Update pointers to this node: *)
+  Xt.set ~xt pred.succ succ ; Xt.set ~xt succ.pred pred
+\end{ocamlcode}
+To actually remove a node, we need to commit the transaction:
+\begin{ocamlcode}
+Xt.commit { tx = remove node }
 \end{ocamlcode}
 
+This \emph{direct} style is in contrast to the \emph{monadic} style of \Haskell's STM.
+It has the advantage that it can easily be used with all the existing control flow structures of \OCaml that would need to be encoded with combinators in a monadic API, including conditionals, loops and higher-order functions like \ocamlinline{List.iter}.
+On the other hand, a monadic API provides a very strict abstraction barrier against misuse by keeping users from accessing the log directly, which is not thread-safe and should not be accessed or reused after the transaction has been committed.
+
+Fortunately, there is a way to make such misuse much more difficult by employing higher-rank polymorphism~\citep{DBLP:conf/pldi/LaunchburyJ94}: by adding a type variable to the type of the log and requiring a transaction to be universally quantified with respect to the log, the type system prevents a log from being reused.
+It is still possible to \eg create a closure that refers to a log after it has been consumed, but that requires effort from the programmer and is unlikely to happen by accident.
+
+In \Haskell's STM, the monadic API combined with the purity of the language gives a stronger guarantee~\citep{DBLP:conf/ppopp/HarrisMPH05}: a transaction can only perform memory operations through the transactional API.
+In \OCaml, even with a monadic API, we cannot provide such a guarantee.
+In practice, this means that it is the responsibility of the user not to do anything irrevocable during a transaction, \eg input/output effects.
+
+\subsection{Scheduler-Friendly Blocking}
+\label{sec:overview_blocking}
+
+Similarly to \Haskell's STM, \Kcas provides a \emph{retry mechanism} that allows a transaction to wait for changes to any number of locations.
+A transaction may simply raise the exception \ocamlinline{Retry.Later} to signal that it should be retried after another thread has made changes to the locations accessed so far.
+The operations \ocamlinline{Loc.get_as}, \ocamlinline{Loc.update} and \ocamlinline{Loc.modify} also supports it.
+
+A trivial example would be to convert a non-blocking queue operation to a blocking operation:
 \begin{ocamlcode}
-Xt.commit { tx = transfer }
+let take_blocking ~xt queue =
+  match Queue.Xt.take_opt ~xt queue with
+  | None -> Retry.later () (* equivalent to [raise Retry.Later]. *)
+  | Some elem -> elem
 \end{ocamlcode}
 
-\subsection{Retry Mechanism}
+The main technical challenge in implementing the retry mechanism is that it should perform blocking in a scheduler-friendly manner.
+In other words, other fibers, as in \Eio, or tasks, as in \Domainslib, should not be prevented from running while one of them is blocked.
+The difficulty with that is that each scheduler potentially has its own way for suspending a fiber or waiting for a task.
+To solve this problem, we use the \c{domain-local-await} library~\citep{domain-local-await}.
+The idea is simple: schedulers like \Eio and \Domainslib install their own implementation of the blocking mechanism, stored in a domain-local variable, and then libraries like \Kcas can obtain the mechanism to block in a scheduler-friendly manner.
+Concretely, this means \Kcas integrates well with existing and future schedulers.
 
-% retry mechanism (wait until a read variable is modified) (as in Composable Memory Transactions)
-% see [Xt.first]
-% [retry] uses the transaction log generated by the failed transaction to determine which memory cells it read, and automatically retries the transaction when one of these cells is modified
-% [retry] can, at any time, abort the transaction and wait until some value previously read by the transaction is modified before retrying
+\subsection{Scheduler-Friendly Timeouts}
+\label{sec:overview_timeouts}
 
-\subsection{Scheduler Friendly Blocking and Timeouts}
+Blocking or retrying a transaction indefinitely is often not acceptable.
+Fortunately, \Kcas provides direct support for \emph{timeouts}.
+To perform a transaction with a timeout, one can simply explicitly specify a \ocamlinline{timeoutf} in seconds:
+\begin{ocamlcode}
+let try_take ~timeoutf queue =
+  Xt.commit ~timeoutf { tx = Queue.Xt.take_blocking queue }
+\end{ocamlcode}
+
+Internally, \Kcas uses the \c{domain-local-timeout}~\citep{domain-local-timeout} library to implement timeouts.
+Just like with the previously mentioned domain-local \emph{await}, the idea with domain-local \emph{timeout} is to allow libraries like \Kcas to tap into the native mechanism of whatever scheduler is currently in use and to do so conveniently without pervasive parameterization.
+
+\subsection{Disjunctive and Conditional Composition}
+\label{sec:overview_disjunctive_composition}
+
+Another challenge is to support disjunctive composition of blocking transactions.
+As explained by \citet{DBLP:conf/ppopp/HarrisMPH05}, this in turn requires support for nested transactions.
+
+Consider the following attempt at a conditional blocking take from a queue:
+\begin{ocamlcode}
+let non_nestable_take_if ~xt predicate queue =
+  let x = Queue.Xt.take_blocking ~xt queue in
+  if not (predicate x) then Retry.later () ;
+  x
+\end{ocamlcode}
+Now, suppose that we want to take an element from the first of two queues using this blocking transaction.
+For that purpose, \Kcas provides the \ocamlinline{Xt.first} function: given a list of transactions \ocamlinline{txs}, \ocamlinline{Xt.first ~xt txs} calls each transaction in turn and either returns the value returned by the transaction or continues if the transaction raised \ocamlinline{Retry.Later}; if all the transactions raised \ocamlinline{Retry.Later}, so does \ocamlinline{Xt.first}.
+
+However, \ocamlinline{Xt.first} does not automatically rollback changes made by the transactions.
+Therefore, if one were to use the above transaction with \ocamlinline{Xt.first}, one would run into the following problem: while only a value that passes the predicate would be returned, an element might be taken from both queues.
+To avoid this problem, we need a way to \emph{roll back changes} recorded by a transaction attempt.
+The way \Kcas supports this is via an \emph{explicit scoping mechanism}.
+Here is a working (nestable) version of conditional blocking take:
+\begin{ocamlcode}
+let take_if ~xt predicate queue =
+  let snap = Xt.snapshot ~xt in
+  let x = Queue.Xt.take_blocking ~xt queue in
+  if not (predicate x) then Retry.later (Xt.rollback ~xt snap) ;
+  x
+\end{ocamlcode}
+First a snapshot of the transaction log is taken and then, in case the predicate is not satisfied, a rollback to the snapshot is performed before signaling a retry.
+The obvious disadvantage of this explicit approach is that it requires more care from the programmer.
+The advantage is that it allows the programmer to explicitly scope nested transactions and perform rollbacks only when necessary and in a more fine-tuned manner, which can allow for better performance.
+
+As a result, \Kcas also supports conditional composition:
+\begin{ocamlcode}
+let if_else ~xt predicate tx1 tx2 =
+  let snap = Xt.snapshot ~xt in
+  let x = tx1 ~xt in
+  if predicate x then x else (Xt.rollback ~xt snap ; tx2 ~xt)
+\end{ocamlcode}
 
 \subsection{Read Skews}
 
-% read skews / conflicts :
-% It is possible for a transaction to see an inconsistent view with values committed by multiple different transactions.
-% One of the variable read by a transaction X is modified by another transaction Y during the execution of X
-% Such a transaction is doomed to abort if it ever tries to commit, but it can cause issues since invariants can appear to be broken
-% solution :
-% check the conflict only at the end of the transaction
-% Avoid instrumenting all the reads or all the writes
-% Possible inconsistency if a transaction continues to run with invalid values (typically in case of double read conflicts)
-% in Transactional Locking II (using a global clock), the implementation guarantees that the code is executed on a consistent snapshot of memory
-% abort any transaction that is not valid
+\Kcas, and more precisely the underlying MCAS algorithm (see \cref{sec:implementation_mcas}), ensures that (1) it is \emph{not} possible to read uncommitted changes to shared-memory locations and (2) successful transactions are \emph{linearizable}, meaning a transaction can only commit after all of the accesses taken together have been atomic.
+
+Unfortunately, \Kcas does not prevent one specific concurrency anomaly: when a transaction reads multiple locations, it is possible for the transaction to observe an inconsistent state when other transactions commit changes between reads of different locations.
+This is traditionally called a \emph{read skew} in database terminology.
+Several other STM implementations have the same property, \eg \Haskell's STM~\citep{DBLP:conf/ppopp/HarrisMPH05} and \ZIO~\citep{zio}.
+
+Having observed such an inconsistent state, a transaction cannot succeed and must be retried.
+However, even though the transaction must retry, read skews can still cause serious problems.
+Consider, for example, the following transaction:
+\begin{ocamlcode}
+let unsafe_subscript ~xt arr idx =
+  let a = Xt.get ~xt arr and i = Xt.get ~xt idx in
+  (* Invariant between a and i may not hold. *)
+  a.(i)
+\end{ocamlcode}
+The assumption is that the \ocamlinline{arr} and \ocamlinline{idx} locations are always updated atomically such that the subscript operation should be safe.
+Unfortunately, due to read skews, the array and index might not match and the subscript operation could result in an ``index out of bounds'' exception.
+Even more subtle problems are possible.
+For example, a balanced binary search tree implementation using rotations can, due to read skews, be seen to have a cycle.
+
+\Kcas addresses these problems in a couple of ways.
+First, it performs periodic validation of the entire transaction log when an access, such as \ocamlinline{Xt.get} or \ocamlinline{Xt.set}, is made through the log.
+As it would take quadratic time to validate the entire log on every access --- and therefore change the time complexity of transactions ---, the number of accesses between validations is doubled after each validation.
+Periodic validation is an effective way to make loops that access shared memory locations, such as the lookup of a key from a binary search tree, resistant against read skews; such loops will eventually be aborted on some access and will then be retried.
+Periodic validation, however, is \emph{not} effective against problems that might occur due to non-transactional operations made after reading inconsistent state and depending on invariants.
+For those cases, an explicit \ocamlinline{Xt.validate} operation is provided that can be used to validate that the accesses to particular locations have been atomic:
+\begin{ocamlcode}
+let subscript ~xt arr idx =
+  let a = Xt.get ~xt arr and i = Xt.get ~xt idx in
+  (* Validate accesses after making them: *)
+  Xt.validate ~xt arr ; Xt.validate ~xt idx ;
+  (* Invariant between a and i now holds. *)
+  a.(i)
+\end{ocamlcode}
 
 \subsection{Composable Concurrent Data Structures}
+
+\Kcas comes with a companion library \KcasData that provides composable concurrent data structures: list, stack, queue, doubly-linked list, hash table.
+The LRU cache from \cref{sec:introduction}, for example, can be implemented using the provided doubly-linked list and hash table.
+We also utilize \KcasData for benchmarks (see \cref{sec:benchmarks}).

@@ -1,19 +1,65 @@
 \section{Related Work}
+\label{sec:related_work}
 
 \paragraph{Software transactional memory}
 
-Software transactional memory was implemented in many other languages, including \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\citep{zio} and \Cpp~\citep{cpp_stm_free}.
+Software transactional memory was implemented in many other languages, including \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}, \Scala~\citep{zio} and \Cpp~\citep{wyatt-stm}.
 
-% \cite{DBLP:conf/podc/ShavitT95}
+% Haskell
+% similar optimistic strategy
+% based on locks and versions
+% read set (validated at commit time)
+% similar retry mechanism (our inspiration)
+% OS threads
 
-% \cite{DBLP:conf/ppopp/HarrisMPH05}
-% \cite{DBLP:conf/flops/DiscoloHMJS06}
-% \cite{DBLP:conf/haskell/LeYF16}
+% Scala ZIO
+% no runtime support
+% similar optimistic strategy
+% based on locks and versions ?
+% read set (validated at commit time)
+% similar retry mechanism
+% typed error : STM[E, A]
+% side effects are forbidden inside STM
+% transactions cannot perform arbitrary side effects (print, I/O, mutate external state); guarantees safe rollback
+% ZIO lightweight fibers; consequently, many fibers may wait on locations
+
+% TL2
+% global version clock
+% one lock per location
+% acquire locks during transaction
+% lazy versioning where speculative writes are held in a private log and only written after validation
+% Ensures that the memory read by a transaction is consistent from its start to its commit
+
+% \citep{DBLP:conf/podc/ShavitT95}
+
+% \citep{DBLP:conf/ppopp/HarrisMPH05}
+% \citep{DBLP:conf/flops/DiscoloHMJS06}
+% \citep{DBLP:conf/haskell/LeYF16}
+
+\paragraph{Read skews}
+
+It is entirely fair to ask whether it is acceptable for an STM mechanism to allow read skew.
+A candidate correctness criterion for transactional memory called ''opacity``, introduced in the paper On the correctness of transactional memory, does not allow it.
+The trade-off is that the known software techniques to provide opacity tend to introduce a global sequential bottleneck, such as a global transaction version number accessed by every transaction, that can limit scalability especially when transactions are relatively short, which is usually the case.
+
+At the time of writing this there are several STM implementations that do not provide opacity.
+The current \Haskell STM implementation, for example, allows similar read skew.
+In \Haskell, however, STM is implemented at the runtime level and transactions are guaranteed to be pure by the type system.
+This allows the \Haskell STM runtime to validate transactions when switching threads.
+Nevertheless there have been experiments to replace the Haskell STM using algorithms that provide opacity as described in the paper Revisiting software transactional memory in \Haskell, for example.
+The \Scala \ZIO STM also allows read skew.
+In his talk Transactional Memory in Practice, Brett Hall describes their experience in using a STM in \Cpp that also allows read skew.
+
+% Validation ensures that reads remain consistent.
+% Haskell : TVar version checking
+% Kcas : incremental validation & commit-time validation
+% TL2 : global version clock
+% in Transactional Locking II (using a global clock), the implementation guarantees that the code is executed on a consistent snapshot of memory
 
 \paragraph{Multi-word compare-and-set}
 
-% \cite{DBLP:conf/wdag/HarrisFP02}
-% \cite{DBLP:conf/wdag/GuerraouiKMZ20}
+% \citep{DBLP:conf/wdag/HarrisFP02}
+% \citep{DBLP:conf/wdag/GuerraouiKMZ20}
 
 We believe that our work is the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
 We are aware of one closely related line of work.
@@ -22,6 +68,6 @@ However, \citet{DBLP:journals/pacmpl/JungLPRTDJ20} show that his proof of RDCSS 
 
 \paragraph{Prophecy variables}
 
-% \cite{DBLP:journals/pacmpl/JungLPRTDJ20}
-% \cite{DBLP:phd/ethos/Vafeiadis08}
-% \cite{DBLP:conf/osdi/Chang0STKZ23}
+% \citep{DBLP:journals/pacmpl/JungLPRTDJ20}
+% \citep{DBLP:phd/ethos/Vafeiadis08}
+% \citep{DBLP:conf/osdi/Chang0STKZ23}

@@ -1,4 +1,5 @@
 \section{Introduction}
+\label{sec:introduction}
 
 Having just recently acquired the ability to have multiple domains running in parallel, \OCaml is in a unique position.
 Instead of having a long history of concurrent multicore programming, we can start afresh.
@@ -13,7 +14,7 @@ On the other hand, composable message passing models tend to be unfamiliar and c
 \paragraph{Software transactional memory}
 
 Software transactional memory~\citep{DBLP:conf/podc/ShavitT95} (STM) is a more recent abstraction that offers both a relatively familiar programming model and composability.
-Essentially, the idea is to enable the programmer to write \emph{atomic transactions}, \ie sequences of shared-memory accesses executed atomically.
+Essentially, the idea is to enable the programmer to write \emph{atomic transactions}, \ie groups of shared-memory accesses executed atomically.
 These transactions can be composed and therefore data structures implemented using this model \emph{do compose}.
 Since its introduction in 1995, STM has been implemented in many programming languages, most notably in \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}.
 
@@ -21,7 +22,7 @@ Since its introduction in 1995, STM has been implemented in many programming lan
 
 We present the \Kcas library, a lock-free software transactional memory implementation for \OCaml.
 \Kcas features a direct style interface, a retry mechanism, scheduler friendly blocking, and timeouts.
-Additionally, it comes with a companion library of composable concurrent data structures: \KcasData.
+Additionally, it comes with a companion library \KcasData of composable concurrent data structures: list, stack, queue, doubly-linked list, hash table.
 
 Consider the implementation of a least-recently-used (LRU) cache or a bounded associative map.
 A simple approach to implement a LRU cache is to use a hash table and a doubly-linked list and keep track of the amount of space in the cache:
@@ -99,7 +100,7 @@ However, while MCAS is able to express arbitrary updates of shared memory locati
 Due to the way shared memory works, implementing read-only operations in terms of read-write operations is inefficient and unscalable.
 Consequently, we improved the original MCAS algorithm with \emph{scalable read-only operations}: the states of read-only locations are read at the start of the operation and checked at the end.
 
-We formally verified the resulting MCAS algorithm using the \Zoo framework based on the \Iris separation logic.
+We formally verified the resulting MCAS algorithm using the \Zoo framework~\citep{DBLP:journals/pacmpl/AllainS26} based on the \Iris separation logic~\citep{DBLP:journals/jfp/JungKJBBD18}.
 It is, as far as we are aware, the first verification of the MCAS algorithm of \citet{DBLP:conf/wdag/GuerraouiKMZ20} and more generally the first foundational verification of an MCAS algorithm.
 Our verification effort involves advanced proofs techniques, especially an interesting use of prophecy variables~\citep{DBLP:journals/pacmpl/JungLPRTDJ20}.
 
@@ -110,7 +111,7 @@ In summary, we make the following contributions:
 \begin{enumerate}
   \item
     We developed the \Kcas library, a lock-free software transactional memory implementation for \OCamlFive.
-    \Kcas provides composable transactions, scheduler friendly modular blocking, timeouts, and comes with a companion library of composable standard data structures: list, stack, queue, doubly-linked list, hash table.
+    \Kcas provides composable transactions, scheduler friendly modular blocking, timeouts, and comes with a companion library of composable standard data structures.
   \item
     We implemented in \OCamlFive and improved a state-of-the-art MCAS algorithm~\citep{DBLP:conf/wdag/GuerraouiKMZ20}.
     In particular, our implementation prevents memory leaks and supports scalable read-only operations.

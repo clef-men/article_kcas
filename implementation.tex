@@ -1,31 +1,27 @@
 \section{\Kcas Implementation}
 \label{sec:implementation}
 
-% lock all locations we are trying to update by installing in them a pointer to an internal descriptor that has all the information necessary to complete the operation
-% The presence of this descriptor pointer will signal to other competing operations that an existing operation is ongoing.
-% Other concurrent operations, instead of blindly competing, will actually use the descriptor to help complete the other operation, which will in turn free up the contended word to be operated on again.
+There are many ways to implement software transactional memory (see \cref{sec:related_work} for a short survey).
+Unlike \Haskell's STM~\citep{DBLP:conf/ppopp/HarrisMPH05}, \Kcas is implemented entirely as a library; no runtime support is needed.
+In this section, we describe its design: (1) following an optimistic approach (\cref{sec:implementation_optimistic_approach}), (2) the representation of transaction logs (\cref{sec:implementation_transaction_log}), (3) an efficient lock-free multi-word compare-and-set algorithm (\cref{sec:implementation_mcas}).
 
 \subsection{Optimistic Approach}
+\label{sec:implementation_optimistic_approach}
 
-\subsection{Transaction Log}
+Committing a \Kcas transaction, \ie a function of type \ocamlinline{xt:'x Xt.t -> 'a}, using \ocamlinline{Xt.commit} takes place in two phases following an optimistic approach.
 
-\subsection{Multi-Word Compare-and-Set Algorithm}
-\label{sec:implementation_mcas}
+\paragraph{First phase}
 
-\input{figures/loc_representation}
-\input{figures/mcas_success}
-\input{figures/mcas_failure}
+The transaction is called with an empty log.
+During the call, the transactional operations, \ie reads from and writes to locations, are recorded in the log.
+When accessing a location for the first time, whether for reading or for writing, the value of that location is read and stored in the log.
+Then, instead of reading the location again or writing to it, the entry for the location is looked up from the log and any change is recorded in the entry.
+Thus, at this stage, the memory writes remain entirely private; they will be actually performed during the second phase.
 
-Our implementation of STM, as described in more detail in \cref{sec:implementation}, relies on the \emph{multi-word compare-and-set} (MCAS) algorithm, a generalization of the \emph{single-word compare-and-set} (CAS) primitive: given a set of distinct shared-memory locations, each associated to an expected value and a desired value, this algorithm atomically either 1) updates all locations from expected to desired value and succeeds or 2) observes an unexpected value at some location and fails.
-However, while CAS is supported by most architectures, the multi-word variant has to be implemented at the software level.
+More precisely, the log records a set of CAS operations to be committed together atomically.
+Consider, for example, the two following transactions on locations \mintinline{ocaml}{a}, \mintinline{ocaml}{b}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y}:
 
-It has been shown in the literature that MCAS can be made practical~\cite{DBLP:conf/wdag/HarrisFP02}.
-Recent work~\cite{DBLP:conf/wdag/GuerraouiKMZ20} further demonstrated that it can be implemented using only $k + 1$ (where $k$ is the number of shared-memory locations) CAS in the uncontended case.
-
-When building a transaction, loads, stores and more complex memory operations to be committed together atomically are translated to a MCAS operation.
-For instance, consider the two following transactions, involving locations \mintinline{ocaml}{a}, \mintinline{ocaml}{b}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y}:
-
-\medskip
+\smallskip
 \begin{minipage}[t]{.45\textwidth}
 \begin{ocamlcode}
 let x_to_b_sub_a ~xt () =
@@ -43,12 +39,11 @@ let y_to_a_add_b ~xt () =
   Xt.set ~xt y (a + b)
 \end{ocamlcode}
 \end{minipage}
-\medskip
+\smallskip
 
-Initially, \mintinline{ocaml}{a} is set to \mintinline{ocaml}{10}, \mintinline{ocaml}{b} to \mintinline{ocaml}{52}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y} to \mintinline{ocaml}{0}.
-When they are committed, these transactions essentially correspond to the following MCAS operations:
+Assuming that no other transaction is interfering and \mintinline{ocaml}{a} is initially set to \mintinline{ocaml}{10}, \mintinline{ocaml}{b} to \mintinline{ocaml}{52}, \mintinline{ocaml}{x} and \mintinline{ocaml}{y} to \mintinline{ocaml}{0}, the first commit phase yields the following CAS operations:
 
-\medskip
+\smallskip
 \begin{minipage}[t]{.45\textwidth}
 \begin{ocamlcode}
 CAS (a, 10, 10)
@@ -64,7 +59,131 @@ CAS (b, 52, 52)
 CAS (y, 0, 62)
 \end{ocamlcode}
 \end{minipage}
-\medskip
+\smallskip
+
+During this phase, several things may abort the commit attempt prematurely.
+\begin{enumerate}
+  \item
+    If an \ocamlinline{Retry.Later} exception is raised, the transaction should be retried once some of the examined locations so far have changed (if one of the locations has already changed, the transaction restarts directly).
+    To achieve this, we leverage the \c{domain-local-await} API~\citep{domain-local-await} to block the current fiber or task in a scheduler-friendly way.
+    Before blocking, a callback to restart the transaction is registered in the locations.
+  \item
+    If an inconsistency is detected through periodic validation or \ocamlinline{Xt.validate}, the transaction restarts (after a short delay to reduce contention).
+  \item
+    If the transaction is subject to a timeout and the timeout has expired, the transaction is aborted and the \ocamlinline{Timeout.Timeout} exception is raised.
+\end{enumerate}
+
+\paragraph{Second phase}
+
+The resulting set of CAS operations is handed on to the MCAS algorithm, described in \cref{sec:implementation_mcas}, whose job is to atomically apply the CASes.
+If the MCAS succeeds, the transaction has been committed.
+If the MCAS fails due to conflicting changes, the transaction restarts (after a short delay to reduce contention).
+
+\subsection{Transaction Log}
+\label{sec:implementation_transaction_log}
+
+Part of the performance of \Kcas depends on the performance of the transaction log, which is regularly accessed during the first phase and traversed by the MCAS algorithm during the second phase.
+It is therefore crucial to use an efficient representation.
+Currently, a transaction log is represented as a \emph{splay tree}, which offers nice properties.
+
+\paragraph{Sorting the locations}
+
+The MCAS algorithm requires the input locations to be sorted --- otherwise, the algorithm can loop.
+As a binary search tree, a splay tree maintains accessed locations sorted.
+
+\paragraph{Optimizing accesses}
+
+A splay tree works a bit like a cache, making accesses to recently accessed elements faster.
+In particular, the pattern where a location is first read and then written is optimized by the splay tree.
+\begin{ocamlcode}
+let decr_if_positive ~xt x =
+  if 0 < Xt.get ~xt x then Xt.decr ~xt x
+\end{ocamlcode}
+In this example, the first access brings the location to the root of the tree.
+The second access is then guaranteed constant time.
+
+Using a splay tree also allows the user to optimize transactions.
+Unlike most self-balancing trees, it can perform a sequence of accesses in linear time; this happens, for example, when the accesses are in either ascending or descending order.
+In particular, a transaction over an array of locations created using \ocamlinline{Loc.make_array} can be performed in linear time simply by making sure that the locations are accessed in order.
+
+\paragraph{Sharing subtrees}
+
+The tree structure and sharing of the immutable spine of the splay tree can be leveraged in the implementation of \ocamlinline{Xt.rollback} (see \cref{sec:overview_disjunctive_composition}), by stopping as soon as the snapshot and the log being rolled back are the same.
+
+\subsection{Multi-Word Compare-and-Set Algorithm}
+\label{sec:implementation_mcas}
+
+\input{figures/mcas_code_1}
+\input{figures/mcas_code_2}
+\input{figures/mcas_code_3}
+
+The most critical part of the \Kcas implementation is the \emph{MCAS algorithm} used to commit changes during the second phase.
+Informally --- we provide a formal specification in \cref{sec:verification} ---, this algorithm operates as follows: given a set of \emph{sorted distinct} shared-memory locations, each associated to an \emph{expected} value and a \emph{desired} value, it \emph{atomically} either (1) updates all locations from expected to desired value and returns \ocamlinline{true} or (2) observes an unexpected value at some location and returns \ocamlinline{false}.
+
+While CAS is supported by most architectures, MCAS has to be implemented at the software level.
+It has been shown in the literature that MCAS can be made practical~\citep{DBLP:conf/wdag/HarrisFP02} and recent work~\citep{DBLP:conf/wdag/GuerraouiKMZ20} further demonstrated that an MCAS operation on $k$ locations can be implemented using only $k + 1$ CASes in the uncontended case.
+We adapted the latter to \Kcas, improving it in several ways:
+\begin{enumerate}
+  \item
+    The algorithm uses internal descriptors that are installed in the target locations.
+    Each descriptor contains information about the MCAS, especially the expected and desired values for the corresponding location.
+    After the MCAS operation, stale values --- either expected or desired values depending the outcome --- are still reachable through the locations and therefore cannot be garbage-collected, causing memory leaks.
+    To avoid that, the ``winner'' of the MCAS operation (that may not be its instigator) is responsible for \emph{clearing} the stale values during an additional \emph{release phase}.
+  \item
+    The original algorithm operates on an array of locations.
+    The new algorithm runs directly on the transaction log, \ie traverses a splay tree (see \cref{sec:implementation_transaction_log}).
+  \item
+    Blocked transactions register callbacks, also called \emph{awaiters}, through the relevant locations (see \cref{sec:implementation_optimistic_approach}).
+    The new algorithm is responsible for awakening them and ensuring no awaiter is lost in the process.
+    In short, before ``locking'' a given location (see below), its awaiters are copied and stored in the splay tree to be awakened during the release phase.
+  \item
+    We introduced support for \emph{read-only operations} that do not interfere with normal read-and-write operations, thereby increasing the scalability of the algorithm.
+    We postpone the explanation to the end of the section.
+\end{enumerate}
+
+For the sake of simplicity, let us assume that the set of CAS operations to perform is represented as a list sorted by locations --- in practice, the algorithm traverses a splay tree.
+In this setting, a simplified version of the MCAS algorithm is given in \cref{fig:mcas_code_1,fig:mcas_code_2,fig:mcas_code_3}; the parts in green and orange are only relevant for the verification (see \cref{sec:verification}) and can be safely ignored.
+
+% lock all locations we are trying to update by installing in them a pointer to an internal descriptor that has all the information necessary to complete the operation
+% The presence of this descriptor pointer will signal to other competing operations that an existing operation is ongoing.
+% Other concurrent operations, instead of blindly competing, will actually use the descriptor to help complete the other operation, which will in turn free up the contended word to be operated on again.
+
+\input{figures/loc_representation}
+
+\paragraph{Representation of locations.}
+
+An MCAS location is represented as an atomic reference to a (mutable) \emph{descriptor}, as shown in \cref{fig:loc_representation}.
+A descriptor contains two values, one of which corresponds to the logical content of the location, and the MCAS operation it belongs to; this MCAS operation is the last to have \emph{locked} the location by writing the descriptor in question.
+Crucially, each descriptor is unique and belongs to only one MCAS.
+
+An MCAS operation is represented as an atomic reference to a \emph{status}.
+When the MCAS has finished, its status is either A (after), meaning it succeeded, or B (before), meaning it failed.
+While the MCAS is still ongoing, its status is U (undetermined).
+To make the algorithm lock-free, other operations have to be able to help the MCAS finish; therefore, a U status links back to the target locations and the corresponding descriptors, resulting in a cyclic structure.
+In the algorithm we verified, this structure is a list; in the actual \Kcas implementation, it is a splay tree.
+
+\input{figures/mcas_success}
+\input{figures/mcas_failure}
+
+\paragraph{Locking.}
+
+Comparatively to previous implementations like that of \citet{DBLP:conf/wdag/HarrisFP02}, this MCAS algorithm is simpler: it includes a locking phase but no unlocking phase --- on the other hand, there is an extra indirection for reads.
+
+\Cref{fig:mcas_success} shows a successful execution of an MCAS operation.
+Initially, the status is U.
+For each target location, the operation first checks that the current value is as expected and then attempts to atomically install its descriptor (\cref{fig:mcas_success_2,fig:mcas_success_3}), thereby ``locking'' the location.
+If the locking phase succeeds, the operation then atomically updates its status to A (\cref{fig:mcas_success_4}), which corresponds to the point when locations are logically modified.
+Additionally, contrary to the original implementation, cleaning up is required to allow stale values to be garbage-collected (\cref{fig:mcas_success_5}).
+
+\Cref{fig:mcas_failure} shows a failing execution of an MCAS operation.
+If the operation finds an unexpected value during the locking phase, it atomically updates its status to B (\cref{fig:mcas_failure_2}) and cleans up stale values (\cref{fig:mcas_failure_3}).
+
+\paragraph{Helping.}
+
+So far, we only considered uncontended executions; in reality, one location may be targeted by concurrent \c{get} and \c{cas} operations.
+Basically, everything happens just as before except operations help one another: if an operation encounters a descriptor whose MCAS operation is still in progress, it helps that MCAS operation to finish first.
+
+\paragraph{Read-only operations}
 
 CAS with equal expected and desired values essentially expresses an operation that does not change the logical content of the target location, but only "asserts" that it does not change during the operation.
 
@@ -73,10 +192,10 @@ Unfortunately, this is not allowed by the MCAS implementations we are aware of.
 Indeed, every CAS actually updates the target locations.
 This means two things: 1) CAS operations targeting the same location can only execute sequentially; 2) CAS operations, even those that do not change the logical content of a location, cause contention as after the operation only the cache of the writer will have a valid copy of the location.
 
-To address this issue, we extend upon the state-of-the-art algorithm~\cite{DBLP:conf/wdag/GuerraouiKMZ20} to allow read-only CMP operations to be expressed directly and not write into memory.
+To address this issue, we extend upon the state-of-the-art algorithm~\citep{DBLP:conf/wdag/GuerraouiKMZ20} to allow read-only CMP operations to be expressed directly and not write into memory.
 For instance, the two above transactions would generate the following operations, that can be run in parallel:
 
-\medskip
+\smallskip
 \begin{minipage}[t]{.45\textwidth}
 \begin{ocamlcode}
 CMP (a, 10)
@@ -92,10 +211,27 @@ CMP (b, 52)
 CAS (y, 0, 62)
 \end{ocamlcode}
 \end{minipage}
-\medskip
+\smallskip
 
 There is one drawback, however.
 This new algorithm is \emph{obstruction-free} but not \emph{lock-free} like the original one.
 In particular, two MCAS involving a common location may basically cancel each other indefinitely.
 To get the best of both worlds, we first attempt the MCAS operations in obstruction-free mode (CMP and CAS) and switch to lock-free mode (CAS only) after a number of failed attempts.
 The resulting algorithm therefore guarantees lock-free behavior.
+
+% other omitted details
+% + require the locations being updated to be in some total order
+% + read-only locations are checked during traversal and possibly verified at the end (if CMP is followed by CAS)
+% + handling of awaiters : copied before locking and awaken during release step
+% + exponential backoff to reduce contention
+
+% Execute CMPs and CASes
+% (Optionally) Verify CMPs
+% Final CAS to determine result
+% Release space to avoid leaks
+
+% The gist of the k-CAS-n-CMP algorithm is to perform an additional step to validate all the read-only CMP accesses before committing the changes.
+
+% The obstruction-free k-CAS-n-CMP algorithm also retains the lock-free k-CAS algorithm as a subset.
+% In cases where only CAS operations are performed, the k-CAS-n-CMP algorithm does the exact same thing as the k-CAS algorithm.
+% This allows a transaction mechanism based on the k-CAS-n-CMP algorithm to easily switch to using only CAS operations to guarantee lock-free behavior.

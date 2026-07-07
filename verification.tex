@@ -1,11 +1,6 @@
 \section{Verified Multi-Word Compare-and-Set Algorithm}
+\label{sec:verification}
 
-\input{figures/mcas_types}
-\input{figures/mcas_code_1}
-\input{figures/mcas_code_2}
-
-% code
-% + clear stale values to prevent memory leaks
 % + prophecy variables (Zoo.proph, Zoo.resolve, Zoo.resolve_with)
 % + ghost identifiers (Zoo.id)
 
@@ -13,20 +8,70 @@
 
 \input{figures/mcas_spec}
 
-% physical equality
+The specification of MCAS is given in \cref{fig:mcas_spec}.
+The persistent assertion $\locInv\ \zooLoc\ \iIname$ represents the knowledge that \zooLoc is a valid MCAS location.
+The exclusive assertion $\zooLoc \iPointstoTwo \zooVal$ represents the ownership of location \zooLoc and the knowledge that it contains value \zooVal.
+$\c{make}\ \zooVal$ creates a new location initialized with \zooVal.
+$\c{get}\ \zooLoc$ atomically reads the content of \zooLoc.
+$\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ performs an MCAS operation on locations $\zooLoc{}s$ with expected values \v{befores} and desired values \v{afters}; on success, it atomically updates $\zooLoc{}s$ from \v{befores} to \v{afters}; on failure, it must have observed a location whose value was different than expected.
+
+\subsection{Linearization}
+
+\paragraph{External linearization.}
+
+As explained in \cref{sec:implementation_mcas}, an MCAS operation may be helped and in fact linearized by another MCAS.
+Consequently, the linearization point of both \c{get} and \c{cas} may be external.
+In fact, a helper may linearize many operations at once, including the original MCAS and other helpers.
+Also, a helper may linearize a helped MCAS while helping yet another MCAS.
+
+\paragraph{Future-dependent linearization.}
+
+When two operations helping an MCAS detect an unexpected value, they both attempt to atomically update its status to B.
+The question is: which of them linearizes the MCAS operation (and other helpers) at the point when it observes an unexpected value?
+The answer is: the one which ``wins'' the update.
+Consequently, the linearization point of \c{cas} may also be future-dependent.
 
 \subsection{Challenges}
 
-\paragraph{Mutually recursive invariants}
+The implementation is fairly short (one hundred lines of code) but extremely subtle.
+We outline the main challenges.
 
-\paragraph{Logical state}
+\paragraph{Mutually recursive invariants.}
 
-\paragraph{External linearization}
+Due to the cyclic structure of ongoing MCASes (see \cref{fig:loc_representation_3}), the definitions of the location invariant (\locInv) and the MCAS invariant are mutually recursive.
+Thankfully, \Iris provides a way to define such fixpoints.
 
-\paragraph{Global prophecy variable}
+Another difficulty comes from the fact that the creation of a location involves a dummy MCAS operation whose invariant has to be initialized at the same time as the location's.
+We had to introduce a way to break the cycle.
 
-\paragraph{Local prophecy variable}
+\paragraph{Logical state.}
 
-\paragraph{MCAS history}
+The verification involves a monotonic logical status that is not determined by the physical status: the physical U status is divided into indexed logical U status indicating the progress made by the MCAS operation.
 
-\subsection{Read-Only Operations}
+\paragraph{External linearization.}
+
+To handle external linearization of an MCAS operation and its helpers by a helper, their atomic updates%
+\footnote{
+In \Iris, an \emph{atomic update} is a resource that materializes a linearization point.
+\Citet{DBLP:journals/pacmpl/MulderK23} provide a good description.
+}
+are stored into the MCAS invariant.
+At the linearization point, the winning helper triggers all the atomic updates and puts them back into the invariant to be retrieved later by their respective owner.
+
+\paragraph{Global prophecy variable.}
+
+To handle future-dependent linearization, we predict both the winner and the outcome of an MCAS operation through a shared prophecy variable.
+To distinguish the winner, we use the same trick as \citet{DBLP:journals/pacmpl/JungLPRTDJ20} in their proof of RCDSS: each MCAS participant is assigned a unique physical identifier (implemented using a prophecy variable) that is part of the prediction.
+
+\paragraph{Local prophecy variable.}
+
+For subtle reasons related to the semantics of physical equality~\citep{DBLP:journals/pacmpl/AllainS26}, we also need to introduce a local prophecy variable in \c{cas}.
+Essentially, the problem is that we cannot predict the outcome of physical equality in advance just by looking at the values; in other words, equality in \Rocq does not imply physical equality in \OCaml.
+
+% generative constructors
+
+\paragraph{MCAS history.}
+
+Another subtle point in the algorithm is the fact that a location cannot be locked more than once by a single MCAS operation.
+While this is obvious when reading the code, it is not in the proof.
+To enforce it logically, each location maintains a ghost history of distinct MCASes; all MCAS in this history are finished except the more recent one.

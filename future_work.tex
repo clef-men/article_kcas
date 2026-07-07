@@ -2,4 +2,15 @@
 
 \paragraph{Relaxed memory model}
 
-\paragraph{Verification of the full \Kcas library}
+It would be interesting to carry out the verification in the relaxed memory model.
+Similarly to primitive atomic locations~\citep{DBLP:journals/pacmpl/MevelJP20}, MCAS locations would carry a logical memory view.
+$\c{get}\ \zooLoc$ would acquire the view stored in \zooLoc.
+On success, $\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ would release the view of the caller through locations $\zooLoc{}s$ and acquire their own views.
+
+\paragraph{Verification of the full library}
+
+In the future, we would also like to extend the verification to the full \Kcas interface, including transactions.
+This is challenging for two reasons.
+(1) The real implementation is even more complex: internally, CAS operations are stored in a splay tree, used as a transaction log, rather than a list; the MCAS algorithm traverses the tree in a depth-first manner.
+(2) Specifying transactions in a composable way appears to be non-trivial.
+That being said, the implementation is relatively short (approximatively one thousand lines of code), so it should be feasible in practice.
