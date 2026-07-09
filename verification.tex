@@ -1,10 +1,12 @@
 \section{Verified Multi-Word Compare-and-Set Algorithm}
 \label{sec:verification}
 
-% + prophecy variables (Zoo.proph, Zoo.resolve, Zoo.resolve_with)
-% + ghost identifiers (Zoo.id)
+The correctness of \Kcas transactions relies on that of the underlying MCAS algorithm (see \cref{sec:implementation_mcas}), whose implementation (\cref{fig:mcas_code_1,fig:mcas_code_2,fig:mcas_code_3}) is short but extremely subtle.
+We verified the algorithm~\refLibTheoriesFile{zoo_mcas/mcas} using the \Zoo framework~\citep{DBLP:journals/pacmpl/AllainS26}, which provides (1) a translator from \OCaml to \Rocq and (2) a precise semantics for concurrent primitives (such as \ocamlinline{Atomic.compare_and_set}) and physical equality.
+All our proofs are mechanized in the \Rocq proof assistant.
 
-\refLibTheoriesFile{zoo_mcas/mcas}
+Note that \Zoo assumes a \emph{sequentially consistent} memory model whereas \OCamlFive has a \emph{relaxed} memory model~\citep{DBLP:conf/pldi/DolanSM18}.
+We inherit the limitation and conjecture that this assumption does not invalidate our concurrent invariant, the core of the proof, and that it can be adapted to relaxed memory following the ``recipe'' of \citet{DBLP:journals/pacmpl/MevelJ21}.
 
 \subsection{Specification}
 
@@ -34,6 +36,9 @@ The answer is: the one which ``wins'' the update.
 Consequently, the linearization point of \c{cas} may also be future-dependent.
 
 \subsection{Challenges}
+
+% + prophecy variables (Zoo.proph, Zoo.resolve, Zoo.resolve_with)
+% + ghost identifiers (Zoo.id)
 
 The implementation is fairly short (one hundred lines of code) but extremely subtle.
 We outline the main challenges.
