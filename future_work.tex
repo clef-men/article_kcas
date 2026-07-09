@@ -1,16 +1,26 @@
 \section{Future Work}
 
+\paragraph{Rendez-vous}
+
+The main limitation of transactions is that they are invisible to each other.
+A transaction does not directly modify shared-memory locations and, once it does, the modifications appear as atomic to other transactions and outside observers.
+The mutual invisibility means that \emph{rendez-vous} between two (or more) threads cannot be expressed as a pair of composable transactions.
+For example, it is not possible to implement synchronous message passing as can be found, \eg, in \ConcurrentML, \Go, and various other languages and libraries.
+However, it is possible~\citep{DBLP:conf/wotug/Brown08,DBLP:conf/icfp/DonnellyF06} to implement a compositional message passing model on top of STM.
+Allowing synchronisation between threads requires committing multiple transactions.
+
 \paragraph{Relaxed memory model}
 
-It would be interesting to carry out the verification in the relaxed memory model.
-Similarly to primitive atomic locations~\citep{DBLP:journals/pacmpl/MevelJP20}, MCAS locations would carry a logical memory view.
+The verification assumes a \emph{sequentially consistent} memory model.
+We would like to extend it to the \emph{relaxed} memory model of \OCamlFive~\citep{DBLP:conf/pldi/DolanSM18}, which is not currently supported by the \Zoo framework.
+Similarly to primitive atomic locations~\citep{DBLP:journals/pacmpl/MevelJP20}, MCAS locations would carry a logical \emph{memory view}.
 $\c{get}\ \zooLoc$ would acquire the view stored in \zooLoc.
-On success, $\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ would release the view of the caller through locations $\zooLoc{}s$ and acquire their own views.
+On success, $\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ would release the view of the caller through locations $\zooLoc{}s$ and acquire the views of the locations.
 
 \paragraph{Verification of the full library}
 
-In the future, we would also like to extend the verification to the full \Kcas interface, including transactions.
+We would like to extend the verification to the full \Kcas library, including its transactional API.
 This is challenging for two reasons.
-(1) The real implementation is even more complex: internally, CAS operations are stored in a splay tree, used as a transaction log, rather than a list; the MCAS algorithm traverses the tree in a depth-first manner.
-(2) Specifying transactions in a composable way appears to be non-trivial.
+(1) The real implementation is even more complex: internally, CAS operations are stored in a splay tree rather than a list; the MCAS algorithm traverses the tree in a depth-first manner.
+(2) Specifying transactions in a composable way appears to be non-trivial; we anticipate that it will require several layers of specifications.
 That being said, the implementation is relatively short (approximatively one thousand lines of code), so it should be feasible in practice.
