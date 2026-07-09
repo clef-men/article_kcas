@@ -1,4 +1,179 @@
 \section{Benchmarks}
 \label{sec:benchmarks}
 
+\subsection{Micro-benchmarks}
+
 % compared with lock-based algorithms, principal advantage is composability rather than raw throughput
+
+As a concurrency paradigm, Software Transactional Memory is appreciated for its compositionality rather than raw performance, where it tends to lose to specialized, non-modular implementations. Optimistic concurrency can scale better than other exclusion mechanism when the memory locations accessed by threads are disjoint; but in presence of concurrency bottlenecks we would be content with a ``small enough'' overhead compared to mutexes.
+
+We propose a series of micro-benchmarks to validate that the slowdown of \Kcas over mutexes is acceptable (in our measurements, at worst 2x-3x), with excellent scalability in uncontended scenarios.
+
+\subsubsection{Benchmarks}
+
+We use the following micro-benchmarks:
+
+\begin{description}
+\item[lru] A micro-benchmark with high contention that mimicks our
+  LRU cache example from the introduction (\cref{sec:introduction}),
+  using an array rather than a hashtable to simplify the code and its
+  performance analysis.
+\item[stack] A Treiber stack micro-benchmark with high contention,
+  where domains compete to pop and push values from a single
+  concurrent stack, implemented as a concurrent reference
+  (mutex-protected, or atomic, or a kcas location) to an immutable
+  list.
+\item[bank] A low-contention micro-benchmark where separate threads
+  access random indices in a large array, with read-accesses
+  dominating write-accesses.
+\end{description}
+
+Our pre-evaluation expectation is that Kcas should have acceptable
+overhead compared to mutexes, except for the low-contention benchmark
+\textbf{bank} where it should scale much better.
+
+\subsubsection{Implementations}
+
+Our benchmarks run the same workload on several worker domains,
+varying the number of domains to observe contention effects and other
+scalability issues. We typically compare the following implementations
+of each benchmark:
+
+\begin{description}
+\item[sequential] A purely-sequential implementation of the
+  benchmark. When $D$ worker domains are requested, we do not actually
+  spawn any domains and simply run the workload $D$ times in
+  a sequential loop. This may seem to be a very naive strategy
+  (no gains from parallelism), but it is in fact very hard to beat
+  with concurrent implementations in high-contention scenarios, where
+  the contention costs added to the book-keeping overhead of the
+  concurrency mechanisms conspire to run much slower that this
+  sequential baseline.
+
+\item[mutexed] An implementation where the concurrent data structures
+  are protected by a global mutex. (We did not experiment with
+  fine-grained mutexes in these benchmarks.) This will not scale well
+  as the number of domains increases, but mutex are highly-optimized
+  so they should perform well on lower numbers of domain.
+
+\item[kcas] A direct \Kcas adaptation of the sequential
+  data-structure: each function takes a transaction parameter
+  \texttt{~xt}, and each mutable reference in the data structure is
+  replaced by a \Kcas location. We did not use the optimized
+  \texttt{kcas_data} structures in these benchmarks to ensure an
+  apple-to-apple comparison with the sequential version of the
+  benchmark.
+
+\item[atomic] For some benchmarks, we wrote a version using lock-free
+  atomics as exposed in \OCaml by the \texttt{Atomic} module. \Kcas
+  being implemented as a multi-word compare-and-swap, it should do
+  worse than a direct single-word compare-and-swap used in this
+  implementation, but it should not be \emph{much} worse.
+
+  We also implement an \textbf{atomic-backoff} where retry loops on
+  atomic operations implement exponential backoff, to reduce
+  contention overheads. This is necessary for a fair comparison to
+  \Kcas which also uses exponential backoff, and comparing
+  \textbf{atomic} and \textbf{atomic-backoff} can help verify that
+  a given benchmark is highly-contended as designed.
+\end{description}
+
+\subsubsection{Setup}
+
+All benchmarks in this section were conducted on an AMD laptop with 12
+cores, set at a fixed frequency of 2Ghz. To avoid reproducibility
+issues due to the lack of isolation of the benchmark workload from
+other tasks on the laptop, we limit our tests to using 10 different
+worker threads (domains).
+
+\subsubsection{Results: \textbf{lru}}
+
+The LRU cache example that we gave in the introduction
+(\cref{sec:introduction}) is a good example of why we need
+compositional ways to define concurrent algorithms and data structure,
+but it does not scale well under concurrent usage: the 'head' cell of
+its doubly-linked list of LRU cache entries is highly contended, as
+every access to the cache writes to it to push the corresponding list
+node to the front of the list.
+
+\begin{center}
+\includegraphics[width=\textwidth]{benchmarks/figures/lru1_runtime.pdf}  
+\end{center}
+
+In this example we see that either mutexes or \kcas scale badly
+compared to the sequential baseline. For example for 6 domains, the
+mutex version is 5x slower than the sequential baseline, and the \kcas
+version is 11x slower; \kcas is 2.2x slower than the mutex, which we
+consider acceptable for a high-contention scenario.
+
+\subsubsection{Results: \textbf{stack}}
+
+The sequential code for this benchmark looks as follows:
+
+\begin{ocamlcode}
+let workload_sequential s =
+  let module S = Stack_sequential in
+  for _i = 0 to num_iters - 1 do
+    some_allocs ();
+    let x = S.pop s in
+    let y = S.pop s in
+    let z = S.pop s in
+    S.push s (x + y + z);      
+  done
+\end{ocamlcode}
+
+We pop from the same list three times, and then push the sum of all
+three values. For \Kcas and our mutex-based implementations, we
+considered a ``fused'' variant, where instead of taking a mutex or
+running a transaction on each pop or push operation, we take the mutex
+or perform a transaction for the whole iteration of the loop
+(three pops and one pushes).
+
+Note: the ability to do this is an expressivity advange of \Kcas over
+atomic Treiber stacks, as we can guarantee that the pops and push
+happen atomically. In this case, due to the use of a single stack, we
+will see that it improves performance slightly, but sometimes it
+degrades them; this cost is unavoidable if we need atomic semantics
+for a wider batch of operations.
+
+\begin{center}
+\includegraphics[width=\textwidth]{benchmarks/figures/stacks1_runtime.pdf}  
+\end{center}
+
+As in the \textbf{lru} case, this is a highly-contended benchmark and
+the sequential baseline does better than all other implementations
+(lower is better). The slowest implementation is \textbf{mutexed}
+(for 8 domains, it is 12x slower than the sequential baseline). Then
+\textbf{atomic} and \textbf{mutexed-fused} (taking a single lock for
+three pops and one push) are in the same qualitative ballpark, around
+7x slower (for 8 domains) than the sequential baseline. Then the
+\textbf{kcas} implementations (fused or not) and the
+\textbf{atomic-backoff} version are again in the same ballpark:
+\textbf{kcas-fused} is only 2.8x slower, \textbf{atomic-backoff} is 3x
+slower, \textbf{kcas} is 3.7x slower.
+
+We see that \Kcas-based implementations are competitive in this
+high-contention benchmark involving a single concurrent location, with
+a very small overhead compared to using lock-free atomic directly --
+and that backoff is sorely needed.
+
+\subsubsection{Results: \textbf{bank}}
+
+This synthetic benchmark has each worker perform random accesses to
+a large array, so that distinct workers tend to access distinct parts
+of the array. We xpect optimistic concurrency to do very well in this
+scenario, especially in read-dominated workflows (here only 1\% of
+accesses are writes).
+
+\begin{center}
+\includegraphics[width=\textwidth]{benchmarks/figures/bank1_runtime.pdf}  
+\end{center}
+
+We see that \textbf{mutexed} does not scale at all: with 6 domains it
+is 5.9x slower than the sequential baseline. \textbf{kcas} on the
+other hand starts 1.55x slower than the sequential baseline on
+1 domain, but scales well: at 8 domains it performs as well as the
+sequential baseline, at 10 domains it is even 12\% faster. The program
+with 10 domains remains 1.4x slower than the 1-domain version, so we
+are not observing perfect/ideal/infinite paralleism, but this remains
+excellent scalability.
