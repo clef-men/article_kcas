@@ -243,7 +243,7 @@ The module \texttt{Kcas\_data.Stack} implements what is basically a Treiber stac
 \begin{center}
 \begin{tabular}{cccc}
 \hline
-Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
+Pushers & Poppers & \Kcas (M op/s) & Saturn (M op/s) \\
 \hline
 1 & 1 & 29.5 & \win{42.7} \\
 1 & 2 & 28.3 & \win{38.7} \\
@@ -262,7 +262,7 @@ Performance is measured in mega-operations per second (higher is better), with 1
 \begin{center}
 \begin{tabular}{cccc}
 \hline
-Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
+Pushers & Poppers & \Kcas (M op/s) & Saturn (M op/s) \\
 \hline
 1 & 1 & 27.0       & \win{33.5} \\
 1 & 2 & 24.5       & \win{27.4} \\
@@ -285,7 +285,7 @@ reasonable but simpler and less micro-optimized.
 \begin{center}
 \begin{tabular}{cccc}
 \hline
-Domains & Read ratio & Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
+Domains & Read ratio & \Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
 \hline
 1 & 90\% & 35.4        & \win{38.3} \\
 2 & 90\% & \win{62.0}  & 16.9 \\
