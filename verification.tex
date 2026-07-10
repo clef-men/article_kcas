@@ -1,8 +1,6 @@
 \section{Verified Multi-Word Compare-and-Set Algorithm}
 \label{sec:verification}
 
-\begin{tirPrefix}{mcas-}
-
 The correctness of \Kcas transactions relies on that of the underlying MCAS algorithm (see \cref{sec:implementation_mcas}), whose implementation (\cref{fig:mcas_code_1,fig:mcas_code_2,fig:mcas_code_3}) is short but extremely subtle.
 We verified the algorithm~\refLibTheoriesFile{zoo_mcas/mcas} using the \Zoo framework~\citep{DBLP:journals/pacmpl/AllainS26}, which provides (1) a translator from \OCaml to \Rocq and (2) a precise semantics for concurrent primitives (such as \ocamlinline{Atomic.compare_and_set}) and physical equality.
 All our proofs are mechanized in the \Rocq proof assistant.
@@ -22,18 +20,18 @@ The \emph{exclusive} assertion $\zooLoc \iPointstoTwo \zooVal$ represents the ow
 The \c{make} operation is specified using a standard Hoare triple, composed of a precondition holding before the call and a postcondition holding after the call.
 \refTirName{make-spec} simply says that $\c{make}\ \zooVal$ creates a new MCAS location initialized with value \zooVal, yielding the corresponding invariant and ownership.
 
-The \c{get} and \c{cas} operations are specified using \emph{logically atomic triples}, composed of (1) \emph{private} pre- and postconditions for the caller, as in Hoare triples, and (2) \emph{public} pre- and postconditions for the \emph{linearization point}.
+The \c{get} and \c{mcas} operations are specified using \emph{logically atomic triples}, composed of (1) \emph{private} pre- and postconditions for the caller, as in Hoare triples, and (2) \emph{public} pre- and postconditions for the \emph{linearization point}.
 Intuitively, the idea is the following: at the \emph{linearization point} of the operation, \ie the point at which it atomically takes effect, the public precondition is logically updated to the public postcondition.
 \refTirName{get-spec} says that $\c{get}\ \zooLoc$ atomically reads the content of \zooLoc \emph{up to physical equality}.
 This precision really matters in the verification; it reflects the fact that physical equality in \OCaml does not correspond to equality in \Rocq~\citep{DBLP:journals/pacmpl/AllainS26}.
-\refTirName{cas-spec} says that $\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ performs an MCAS operation on locations $\zooLoc{}s$ with expected values \v{befores} and desired values \v{afters}; on success, it atomically updates $\zooLoc{}s$ from \v{befores} --- again, \emph{up to physical equality} --- to \v{afters}; on failure, it must have observed a location whose value was \emph{physically} different than expected.
+\refTirName{cas-spec} says that $\c{mcas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ performs an MCAS operation on locations $\zooLoc{}s$ with expected values \v{befores} and desired values \v{afters}; on success, it atomically updates $\zooLoc{}s$ from \v{befores} --- again, \emph{up to physical equality} --- to \v{afters}; on failure, it must have observed a location whose value was \emph{physically} different than expected.
 
 \subsection{Linearization}
 
 \paragraph{External linearization.}
 
 As explained in \cref{sec:implementation_mcas}, an MCAS operation may be helped and in fact linearized by another MCAS.
-Consequently, the linearization point of both \c{get} and \c{cas} may be external.
+Consequently, the linearization point of both \c{get} and \c{mcas} may be external.
 In fact, a helper may linearize many operations at once, including the original MCAS and other helpers.
 Also, a helper may linearize a helped MCAS while helping yet another MCAS.
 
@@ -42,7 +40,7 @@ Also, a helper may linearize a helped MCAS while helping yet another MCAS.
 When two operations helping an MCAS detect an unexpected value, they both attempt to atomically update its status to B.
 The question is: which of them linearizes the MCAS operation (and other helpers) at the point when it observes an unexpected value?
 The answer is: the one which ``wins'' the update.
-Consequently, the linearization point of \c{cas} may also be future-dependent.
+Consequently, the linearization point of \c{mcas} may also be future-dependent.
 
 \subsection{Challenges}
 
@@ -81,7 +79,7 @@ To distinguish the winner, we use the same trick as \citet{DBLP:journals/pacmpl/
 
 \paragraph{Local prophecy variable.}
 
-For subtle reasons related to the semantics of physical equality~\citep{DBLP:journals/pacmpl/AllainS26}, we also need to introduce a local prophecy variable in \c{cas}.
+For subtle reasons related to the semantics of physical equality~\citep{DBLP:journals/pacmpl/AllainS26}, we also need to introduce a local prophecy variable in \c{mcas}.
 Essentially, the problem is that we cannot predict the outcome of physical equality in advance just by looking at the values; in other words, equality in \Rocq does not imply physical equality in \OCaml.
 
 % generative constructors
@@ -91,5 +89,3 @@ Essentially, the problem is that we cannot predict the outcome of physical equal
 Another subtle point in the algorithm is the fact that a location cannot be locked more than once by a single MCAS operation.
 While this is obvious when reading the code, it is not in the proof.
 To enforce it logically, each location maintains a ghost history of distinct MCASes; all MCAS in this history are finished except the more recent one.
-
-\end{tirPrefix}
