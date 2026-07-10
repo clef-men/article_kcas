@@ -278,10 +278,10 @@ Pushers & Poppers & \Kcas (M op/s) & Saturn (M op/s) \\
 
 We compare the hash table of \KcasData against the sequential
 implementation provided by the OCaml standard library, protected by
-a global mutex, and against the atomic implementation provided by
-\Saturn. The hash table of \KcasData and \Saturn have been heavily
-micro-optimized, whereas the implementation of the standard library is
-reasonable but simpler and less micro-optimized.
+a global mutex, and against the optimized concurrent implementation
+provided by \Saturn. The hash table of \KcasData and \Saturn have been
+heavily micro-optimized, whereas the implementation of the standard
+library is reasonable but simpler and less micro-optimized.
 
 \begin{center}
 \begin{tabular}{cccc}
