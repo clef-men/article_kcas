@@ -1,7 +1,11 @@
 \section{Benchmarks}
 \label{sec:benchmarks}
 
-\subsection{Micro-benchmarks}
+\def\benchmarkWidth{%
+  .6\textwidth%
+}
+
+\subsection{Micro-Benchmarks}
 
 % compared with lock-based algorithms, principal advantage is composability rather than raw throughput
 
@@ -14,21 +18,21 @@ We propose a series of micro-benchmarks to validate that the slowdown of \Kcas o
 We use the following micro-benchmarks:
 
 \begin{description}
-\item[lru] A micro-benchmark with high contention that mimicks our
+\item[lru] A micro-benchmark with high contention that mimics our
   LRU cache example from the introduction (\cref{sec:introduction}),
-  using an array rather than a hashtable to simplify the code and its
+  using an array rather than a hash table to simplify the code and its
   performance analysis.
 \item[stack] A Treiber stack micro-benchmark with high contention,
   where domains compete to pop and push values from a single
   concurrent stack, implemented as a concurrent reference
-  (mutex-protected, or atomic, or a kcas location) to an immutable
+  (mutex-protected, or atomic, or a \Kcas location) to an immutable
   list.
 \item[bank] A low-contention micro-benchmark where separate threads
   access random indices in a large array, with read-accesses
   dominating write-accesses.
 \end{description}
 
-Our pre-evaluation expectation is that Kcas should have acceptable
+Our pre-evaluation expectation is that \Kcas should have acceptable
 overhead compared to mutexes, except for the low-contention benchmark
 \textbf{bank} where it should scale much better.
 
@@ -58,14 +62,14 @@ of each benchmark:
 
 \item[kcas] A direct \Kcas adaptation of the sequential
   data-structure: each function takes a transaction parameter
-  \texttt{~xt}, and each mutable reference in the data structure is
+  \ocamlinline{~xt}, and each mutable reference in the data structure is
   replaced by a \Kcas location. We did not use the optimized
-  \texttt{kcas_data} structures in these benchmarks to ensure an
+  \KcasData structures in these benchmarks to ensure an
   apple-to-apple comparison with the sequential version of the
   benchmark.
 
 \item[atomic] For some benchmarks, we wrote a version using lock-free
-  atomics as exposed in \OCaml by the \texttt{Atomic} module. \Kcas
+  atomics as exposed in \OCaml by the \ocamlinline{Atomic} module. \Kcas
   being implemented as a multi-word compare-and-swap, it should do
   worse than a direct single-word compare-and-swap used in this
   implementation, but it should not be \emph{much} worse.
@@ -97,13 +101,13 @@ every access to the cache writes to it to push the corresponding list
 node to the front of the list.
 
 \begin{center}
-\includegraphics[width=\textwidth]{benchmarks/figures/lru1_runtime.pdf}  
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/lru1_runtime.pdf}
 \end{center}
 
-In this example we see that either mutexes or \kcas scale badly
+In this example we see that either mutexes or \Kcas scale badly
 compared to the sequential baseline. For example for 6 domains, the
-mutex version is 5x slower than the sequential baseline, and the \kcas
-version is 11x slower; \kcas is 2.2x slower than the mutex, which we
+mutex version is 5x slower than the sequential baseline, and the \Kcas
+version is 11x slower; \Kcas is 2.2x slower than the mutex, which we
 consider acceptable for a high-contention scenario.
 
 \subsubsection{Results: \textbf{stack}}
@@ -129,7 +133,7 @@ running a transaction on each pop or push operation, we take the mutex
 or perform a transaction for the whole iteration of the loop
 (three pops and one pushes).
 
-Note: the ability to do this is an expressivity advange of \Kcas over
+Note: the ability to do this is an expressivity advantage of \Kcas over
 atomic Treiber stacks, as we can guarantee that the pops and push
 happen atomically. In this case, due to the use of a single stack, we
 will see that it improves performance slightly, but sometimes it
@@ -137,7 +141,7 @@ degrades them; this cost is unavoidable if we need atomic semantics
 for a wider batch of operations.
 
 \begin{center}
-\includegraphics[width=\textwidth]{benchmarks/figures/stacks1_runtime.pdf}  
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/stacks1_runtime.pdf}  
 \end{center}
 
 As in the \textbf{lru} case, this is a highly-contended benchmark and
@@ -161,12 +165,12 @@ and that backoff is sorely needed.
 
 This synthetic benchmark has each worker perform random accesses to
 a large array, so that distinct workers tend to access distinct parts
-of the array. We xpect optimistic concurrency to do very well in this
+of the array. We expect optimistic concurrency to do very well in this
 scenario, especially in read-dominated workflows (here only 1\% of
 accesses are writes).
 
 \begin{center}
-\includegraphics[width=\textwidth]{benchmarks/figures/bank1_runtime.pdf}  
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/bank1_runtime.pdf}  
 \end{center}
 
 We see that \textbf{mutexed} does not scale at all: with 6 domains it
@@ -175,5 +179,5 @@ other hand starts 1.55x slower than the sequential baseline on
 1 domain, but scales well: at 8 domains it performs as well as the
 sequential baseline, at 10 domains it is even 12\% faster. The program
 with 10 domains remains 1.4x slower than the 1-domain version, so we
-are not observing perfect/ideal/infinite paralleism, but this remains
+are not observing perfect/ideal/infinite parallelism, but this remains
 excellent scalability.
