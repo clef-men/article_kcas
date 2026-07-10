@@ -5,7 +5,7 @@
 
 Software transactional memory was implemented in many other languages, including \Cpp~\citep{wyatt-stm}, \CSharp~\citep{DBLP:conf/pldi/HarrisPST06}, \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05} and \Scala~\citep{scala-stm,zio}.
 
-The implementations closest to our work are \Haskell's STM and \Scala's \ZIO.
+The implementations closest to our work are \Haskell's STM and \Scala's \ZIO. The STM runtime in within GHC is implemented in C, whereas \Scala has a pure-Scala implementation. Other works have considered compiler-level or bytecode-rewriting support, and may have better performance characteristics than pure-library implementations such as \Kcas.
 
 % Haskell
 % similar optimistic strategy
