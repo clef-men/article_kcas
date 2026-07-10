@@ -126,6 +126,29 @@ but it does not scale well under concurrent usage: the 'head' cell of
 its doubly-linked list of LRU cache entries is highly contended, as
 every access to the cache writes to it to push the corresponding list
 node to the front of the list.
+\begin{ocamlcode}
+module Dllist : sig
+  type 'a node = {
+    mutable prev : 'a node Kcas.Loc.t;
+    contents : 'a option Kcas.Loc.t;
+    mutable next : 'a node Kcas.Loc.t;
+  }
+  type 'a t = List of 'a node [@@unboxed]
+  (* ... *)
+end
+
+module Cache : sig
+  type 'a t = {
+    f : int -> 'a;  
+    params : cache_params;
+    cache : ('a * int Dllist.node) option Kcas.Loc.t array;
+    entries : int Dllist.t;
+    space_left : int Kcas.Loc.t;
+  }
+end
+\end{ocamlcode}
+
+The performance results as are follows:
 
 \begin{center}
 \includegraphics[width=\benchmarkWidth]{benchmarks/figures/lru1_runtime.pdf}
