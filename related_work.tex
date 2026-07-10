@@ -5,7 +5,7 @@
 
 Software transactional memory was implemented in many other languages, including \Cpp~\citep{wyatt-stm}, \CSharp~\citep{DBLP:conf/pldi/HarrisPST06}, \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05} and \Scala~\citep{scala-stm,zio}.
 
-The implementations closest to our work are \Haskell's STM and \Scala's \ZIO. The STM runtime in within GHC is implemented in C, whereas \Scala has a pure-Scala implementation. Other works have considered compiler-level or bytecode-rewriting support, and may have better performance characteristics than pure-library implementations such as \Kcas.
+The implementations closest to our work are GHC's STM for \Haskell, and \Scala's \ZIO. We use a broadly similar optimistic strategy, and took inspiration from GHC's \texttt{retry} mechanism and \texttt{orElse} logic. Both track a form of read sets, which inspired our extension of MCAS for CMP read-only operations. The STM runtime within GHC is implemented in C, whereas \ZIO has a pure-Scala implementation. Other works have considered compiler-level or bytecode-rewriting support, and may have better performance characteristics than pure-library implementations such as \Kcas.
 
 % Haskell
 % similar optimistic strategy
@@ -33,14 +33,14 @@ The implementations closest to our work are \Haskell's STM and \Scala's \ZIO. Th
 \paragraph{Read skews}
 
 It is entirely fair to ask whether it is acceptable for an STM mechanism to allow read skew.
-A candidate correctness criterion for transactional memory called ''opacity``, introduced in the paper On the correctness of transactional memory, does not allow it.
-The trade-off is that the known software techniques to provide opacity tend to introduce a global sequential bottleneck, such as a global transaction version number accessed by every transaction, that can limit scalability especially when transactions are relatively short, which is usually the case.
+A candidate correctness criterion for transactional memory called ''opacity``, introduced in \citet*{DBLP:conf/ppopp/GuerraouiK08}, does not allow it.
+The trade-off is that the known software techniques to provide opacity tend to introduce a global sequential bottleneck, such as a global transaction version number accessed by every transaction, that can limit scalability especially when transactions are relatively short, which is usually the case. For example, TL2~\citep*{DBLP:conf/wdag/DiceSS06} uses one lock per location, acquiring locks during transaction to prevent read skew, but the overhead is substantial.
 
 At the time of writing this there are several STM implementations that do not provide opacity.
 The current \Haskell STM implementation, for example, allows similar read skew.
 In \Haskell, however, STM is implemented at the runtime level and transactions are guaranteed to be pure by the type system.
 This allows the \Haskell STM runtime to validate transactions when switching threads.
-Nevertheless there have been experiments to replace the Haskell STM using algorithms that provide opacity as described in the paper Revisiting software transactional memory in \Haskell, for example.
+Nevertheless there have been experiments to replace the Haskell STM using algorithms that provide opacity as described in \citet*{DBLP:conf/haskell/LeYF16}, for example.
 The \Scala \ZIO STM also allows read skew.
 In his talk Transactional Memory in Practice, Brett Hall describes their experience in using a STM in \Cpp that also allows read skew.
 
