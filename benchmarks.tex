@@ -238,10 +238,10 @@ For example, nested transactions are used to implement concurrent ``helping'': w
 
 \newcommand{\win}[1]{\underline{#1}}
 
-The module \texttt{Kcas_data.Stack} implements what is basically a Treiber stack, with micro-optimizations to the type of immutable lists. We compare it with the \texttt{Stack} module provided by the \Saturn library, the state-of-the-art for concurrent data structures in OCaml, which also uses a Treiber stack with an atomic reference.
+The module \texttt{Kcas\_data.Stack} implements what is basically a Treiber stack, with micro-optimizations to the type of immutable lists. We compare it with the \texttt{Stack} module provided by the \Saturn library, the state-of-the-art for concurrent data structures in OCaml, which also uses a Treiber stack with an atomic reference.
 
 \begin{center}
-\begin{tabular}{llcc}
+\begin{tabular}{cccc}
 \hline
 Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
 \hline
@@ -260,7 +260,7 @@ Performance is measured in mega-operations per second (higher is better), with 1
 \Saturn uses a Michael-Scott queue \citep*{TODO}, which is reminiscent of the purely-functional implementation of queues with two lists/stacks. \KcasData uses a specialized design with three queues, designed to enable helping: when the ``front'' list from which elements are popped becomes empty, we move the ``back'' list into which elements are pushed into a ``middle'' list, and concurrent accessors collaborate to reverse it into the ``front''.
 
 \begin{center}
-\begin{tabular}{llcc}
+\begin{tabular}{cccc}
 \hline
 Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
 \hline
@@ -276,8 +276,14 @@ Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
 
 \subsubsection{Hash tables}
 
+We compare the hash table of \KcasData against the sequential
+implementation provided by the OCaml standard library, protected by
+a global mutex. The hash table of \KcasData has been heavily
+micro-optimized, whereas the implementation of the standard library is
+reasonable but simpler and less micro-optimized.
+
 \begin{center}
-\begin{tabular}{llcc}
+\begin{tabular}{cccc}
 \hline
 Domains & Read ratio & Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
 \hline
@@ -291,3 +297,10 @@ Domains & Read ratio & Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
 \end{tabular}
 \end{center}
 
+The results demonstrate that the \KcasData implementation offers good
+scalability: it is already faster than the standard library for two
+domains. The book-keeping overhead of \Kcas is significant in the
+single-domain case. For read-dominated workflows, it is compensated by
+the \KcasData micro-optimizations; for write-dominated workflows
+(only 10\% of read-only operations), \KcasData is 3.6x slower on
+a single domain.
