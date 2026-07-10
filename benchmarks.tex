@@ -9,9 +9,26 @@
 
 % compared with lock-based algorithms, principal advantage is composability rather than raw throughput
 
-As a concurrency paradigm, Software Transactional Memory is appreciated for its compositionality rather than raw performance, where it tends to lose to specialized, non-modular implementations. Optimistic concurrency can scale better than other exclusion mechanism when the memory locations accessed by threads are disjoint; but in presence of concurrency bottlenecks we would be content with a ``small enough'' overhead compared to mutexes.
+As a concurrency paradigm, Software Transactional Memory is
+appreciated for its compositionality rather than raw performance,
+where it tends to lose to specialized, non-modular
+implementations. Optimistic concurrency can scale better than other
+exclusion mechanism when the memory locations accessed by threads are
+disjoint, or when read-only accesses dominate; but in presence of
+concurrency bottlenecks we would be content with a ``small enough''
+overhead compared to less-composable concurrency mechanisms
+(mutexes or lock-free atomic operations).
 
-We propose a series of micro-benchmarks to validate that the slowdown of \Kcas over mutexes is acceptable (in our measurements, at worst 2x-3x), with excellent scalability in uncontended scenarios.
+In other words: the promise of \Kcas in the introduction is that it is
+easy to make concurrent data-structure thread-safe in a composable
+way, by just sprinkling an \texttt{~xt} parameter in each function. Is
+this reasonable performance-wise, or do the book-keeping overhead of
+\Kcas make this approach prohibitive in practice?
+
+We propose a series of micro-benchmarks to demonstrate that the
+slowdown of \Kcas over mutexes is acceptable (in our measurements, at
+worst 2x-3x compared to mutexes, even under high contention), with
+excellent scalability in read-dominated workloads.
 
 \subsubsection{Benchmarks}
 
@@ -82,13 +99,23 @@ of each benchmark:
   a given benchmark is highly-contended as designed.
 \end{description}
 
+We want to emphasize that all implementations of each benchmark are
+directly derived from the sequential version, putting a transaction
+log everywhere (for \Kcas) or a global mutex, mimicking the
+beginner-user approach of directly adapting their sequential code. We
+are measuring the overhead incurred by \Kcas in this scenario --- not
+the performance of more advanced features like retries, nested
+commits, etc.
+
 \subsubsection{Setup}
 
 All benchmarks in this section were conducted on an AMD laptop with 12
 cores, set at a fixed frequency of 2Ghz. To avoid reproducibility
 issues due to the lack of isolation of the benchmark workload from
 other tasks on the laptop, we limit our tests to using 10 different
-worker threads (domains).
+worker threads (domains). We used \texttt{hyperfine} with at least 10
+runs per test (sometimes more to reduce noise), and our plots include
+the observed standard deviation as an error bar.
 
 \subsubsection{Results: \textbf{lru}}
 
@@ -122,7 +149,7 @@ let workload_sequential s =
     let x = S.pop s in
     let y = S.pop s in
     let z = S.pop s in
-    S.push s (x + y + z);      
+    S.push s (x + y + z);
   done
 \end{ocamlcode}
 
@@ -141,7 +168,7 @@ degrades them; this cost is unavoidable if we need atomic semantics
 for a wider batch of operations.
 
 \begin{center}
-\includegraphics[width=\benchmarkWidth]{benchmarks/figures/stacks1_runtime.pdf}  
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/stacks1_runtime.pdf}
 \end{center}
 
 As in the \textbf{lru} case, this is a highly-contended benchmark and
@@ -170,7 +197,7 @@ scenario, especially in read-dominated workflows (here only 1\% of
 accesses are writes).
 
 \begin{center}
-\includegraphics[width=\benchmarkWidth]{benchmarks/figures/bank1_runtime.pdf}  
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/bank1_runtime.pdf}
 \end{center}
 
 We see that \textbf{mutexed} does not scale at all: with 6 domains it
@@ -181,3 +208,21 @@ sequential baseline, at 10 domains it is even 12\% faster. The program
 with 10 domains remains 1.4x slower than the 1-domain version, so we
 are not observing perfect/ideal/infinite parallelism, but this remains
 excellent scalability.
+
+To understand how it affects scalability, we also measured the
+performance of this benchmark under varying read-write ratios
+(with always 10 domains). The horizontal axis is the read ratio, in
+percents: 0 means that we only perform writes (in random positions in
+the array), 80 means that 80\% of accesses are reads.
+
+\begin{center}
+\includegraphics[width=\benchmarkWidth]{benchmarks/figures/bank1-ratio_runtime.pdf}
+\end{center}
+
+Measurement noises (as witnessed by error bars) are rather high in
+this 10-domains configuration that maximizes contention. We do observe
+a continuous performance improvement for \Kcas as the read ratio goes
+towards 100, whereas the sequential version remains stable. With only
+writes, \textbf{kcas} is 1.46$\times$($\pm$0.22) slower than
+\mathbf{sequential}. With only reads, \textbf{sequential} is
+1.16$\times$($\pm$0.12) slower than \textbf{kcas}.
