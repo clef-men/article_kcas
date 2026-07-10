@@ -9,15 +9,14 @@
     }[
       \zooLoc
     ]{
-      \locInv\ \zooLoc\ \iIname \iSep \\
+      \locInv\ \zooLoc \iSep \\
       \zooLoc \iPointstoTwo \zooVal
     }
   \and
     \iAspec[
-      lab=get-spec,
-      mask=\iIname
+      lab=get-spec
     ]{
-      \locInv\ \zooLoc\ \iIname
+      \locInv\ \zooLoc
     }[
       \zooVal
     ]{
@@ -33,11 +32,10 @@
     }
   \and
     \iAspec[
-      lab=cas-spec,
-      mask=\iIname
+      lab=cas-spec
     ]{
       \iBigSep_{\zooLoc \in \zooLoc{}s}
-        \locInv\ \zooLoc\ \iIname
+        \locInv\ \zooLoc
     }[
       \zooVals
     ]{
