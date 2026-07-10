@@ -16,7 +16,7 @@ On the other hand, composable message passing models tend to be unfamiliar and c
 Software transactional memory~\citep{DBLP:conf/podc/ShavitT95} (STM) is a more recent abstraction that offers both a relatively familiar programming model and composability.
 Essentially, the idea is to enable the programmer to write \emph{atomic transactions}, \ie groups of shared-memory accesses executed atomically.
 These transactions can be composed and therefore data structures implemented using this model \emph{do compose}.
-Since its introduction in 1995, STM has been implemented in many programming languages, most notably in \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}.
+Since its introduction in 1995, STM has been implemented in many programming languages, most notably in \Haskell~\citep{DBLP:conf/ppopp/HarrisMPH05}.\Xgabriel{Other significant STM developments include Scala (see the \href{https://nbronson.github.io/scala-stm/expert_group.html}{Scala STM Expert Group}) and C# (notably the Bartok project at Microsoft Research, see \url{https://timharris.uk/papers/2006-pldi.pdf}). I think that both should be cited here.}
 
 \paragraph{Our library}
 
