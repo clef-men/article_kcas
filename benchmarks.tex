@@ -5,7 +5,7 @@
   .6\textwidth%
 }
 
-\subsection{Micro-Benchmarks}
+\subsection{Direct porting micro-benchmarks}
 
 % compared with lock-based algorithms, principal advantage is composability rather than raw throughput
 
@@ -205,7 +205,7 @@ is 5.9x slower than the sequential baseline. \textbf{kcas} on the
 other hand starts 1.55x slower than the sequential baseline on
 1 domain, but scales well: at 8 domains it performs as well as the
 sequential baseline, at 10 domains it is even 12\% faster. The program
-with 10 domains remains 1.4x slower than the 1-domain version, so we
+with 10 domains remains 1.4x slower than the 1-domain version, so wekca
 are not observing perfect/ideal/infinite parallelism, but this remains
 excellent scalability.
 
@@ -226,3 +226,68 @@ towards 100, whereas the sequential version remains stable. With only
 writes, \textbf{kcas} is 1.46$\times$($\pm$0.22) slower than
 \textbf{sequential}. With only reads, \textbf{sequential} is
 1.16$\times$($\pm$0.12) slower than \textbf{kcas}.
+
+
+\subsection{Evaluating \KcasData}
+
+The \KcasData library provides composable concurrent data structures: list, stack, queue, doubly-linked list, hash table. When adapting their code to \Kcas, users are encouraged to use the \KcasData implementation to ``translate'' the user of the corresponding sequential data structure, typically coming from the \OCaml standard library. Its implementations are not direct ports of the standard-library counterport (as in the micro-benchmarks above), they are carefully optimized to play well with \Kcas and take advantage of STM idioms.
+
+For example, nested transactions are used to implement concurrent ``helping'': when the \KcasData hashtable dynamically decides to resize to reduce conflicts, it transitions to an intermediate state where the pre-resize array remains available, the post-resize array is still in construction, and other threads accessing the table then spend a bit of work resizing a part of the bucket array, collaboratively. The \KcasData benchmarks below also serve as macro-benchmark these more advanced idioms, and exercise longer transactions exercizing more locations (than our micro-benchmarks).
+
+\subsubsection{Concurrent stacks}
+
+\newcommand{\win}[1]{\underline{#1}}
+
+The module \texttt{Kcas_data.Stack} implements what is basically a Treiber stack, with micro-optimizations to the type of immutable lists. We compare it with the \texttt{Stack} module provided by the \Saturn library, the state-of-the-art for concurrent data structures in OCaml, which also uses a Treiber stack with an atomic reference.
+
+\begin{center}
+\begin{tabular}{llcc}
+\hline
+Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
+\hline
+1 & 1 & 29.5 & \win{42.7} \\
+1 & 2 & 28.3 & \win{38.7} \\
+2 & 1 & 31.7 & \win{44.8} \\
+2 & 2 & 29.0 & \win{39.9} \\
+\hline
+\end{tabular}
+\end{center}
+
+Performance is measured in mega-operations per second (higher is better), with 1 to 4 domains working as ``pushers'' or ``poppers''. Unsurprisingly \Saturn performs better than \KcasData, but the gap is surprisingly small -- users do not give up much efficiency by choosing a composable concurrency abstraction.
+
+\subsubsection{Concurrent queues}
+
+\Saturn uses a Michael-Scott queue \citep*{TODO}, which is reminiscent of the purely-functional implementation of queues with two lists/stacks. \KcasData uses a specialized design with three queues, designed to enable helping: when the ``front'' list from which elements are popped becomes empty, we move the ``back'' list into which elements are pushed into a ``middle'' list, and concurrent accessors collaborate to reverse it into the ``front''.
+
+\begin{center}
+\begin{tabular}{llcc}
+\hline
+Pushers & Poppers & Kcas (M op/s) & Saturn (M op/s) \\
+\hline
+1 & 1 & 27.0       & \win{33.5} \\
+1 & 2 & 24.5       & \win{27.4} \\
+2 & 1 & \win{31.6} & {24.5} \\
+2 & 2 & \win{24.6} & {22.1} \\
+\hline
+\end{tabular}
+\end{center}
+
+\KcasData performs surprisingly well, with efficiency comparable to \Saturn.
+
+\subsubsection{Hash tables}
+
+\begin{center}
+\begin{tabular}{llcc}
+\hline
+Domains & Read ratio & Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
+\hline
+1 & 90\% & 35.4        & \win{38.3} \\
+2 & 90\% & \win{62.0}  & 16.9 \\
+4 & 90\% & \win{108.7} & 14.5 \\
+1 & 10\% & 10.4        & \win{37.9} \\
+2 & 10\% & \win{19.0}  & 14.9 \\
+4 & 10\% & \win{31.1}  & 11.7 \\
+\hline
+\end{tabular}
+\end{center}
+
