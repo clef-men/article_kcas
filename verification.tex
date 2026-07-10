@@ -28,6 +28,10 @@ This precision really matters in the verification; it reflects the fact that phy
 
 \subsection{Linearization}
 
+The \c{mcas} operation relies on the \c{determine\_cas} operation (see \cref{fig:mcas_code_2}), which executes or helps executing a given MCAS operation.
+More precisely, an MCAS operation is linearized during \c{determine\_as}, either (1) at line 12 if it succeeds or (2) at line 24 if it fails.
+As we now explain, the exact linearization structure --- who linearizes who --- is non-trivial.
+
 \paragraph{External linearization.}
 
 As explained in \cref{sec:implementation_mcas}, an MCAS operation may be helped and in fact linearized by another MCAS.
@@ -37,34 +41,28 @@ Also, a helper may linearize a helped MCAS while helping yet another MCAS.
 
 \paragraph{Future-dependent linearization.}
 
-When two operations helping an MCAS detect an unexpected value, they both attempt to atomically update its status to B.
+When two operations helping an MCAS detect an unexpected value, they both attempt to atomically update its status to \ocamlinline{Before}.
 The question is: which of them linearizes the MCAS operation (and other helpers) at the point when it observes an unexpected value?
 The answer is: the one which ``wins'' the update.
 Consequently, the linearization point of \c{mcas} may also be future-dependent.
 
-\subsection{Challenges}
+\subsection{Proof Insights}
 
-% + prophecy variables (Zoo.proph, Zoo.resolve, Zoo.resolve_with)
-% + ghost identifiers (Zoo.id)
-
-The implementation is fairly short (one hundred lines of code) but extremely subtle.
-We outline the main challenges.
+Dealing with the complexity of the algorithm requires advanced proof techniques.
+We describe the main difficulties.
 
 \paragraph{Mutually recursive invariants.}
 
 Due to the cyclic structure of ongoing MCASes (see \cref{fig:loc_representation_3}), the definitions of the location invariant (\locInv) and the MCAS invariant are mutually recursive.
 Thankfully, \Iris provides a way to define such fixpoints.
 
-Another difficulty comes from the fact that the creation of a location involves a dummy MCAS operation whose invariant has to be initialized at the same time as the location's.
-We had to introduce a way to break the cycle.
-
 \paragraph{Logical state.}
 
-The verification involves a monotonic logical status that is not determined by the physical status: the physical U status is divided into indexed logical U status indicating the progress made by the MCAS operation.
+The verification involves a monotonic logical status that is not determined by the physical status: the physical \ocamlinline{Undetermined} status is divided into indexed logical \ocamlinline{Undetermined} status indicating the progress made by the MCAS operation.
 
-\paragraph{External linearization.}
+\paragraph{External linearization}
 
-To handle external linearization of an MCAS operation and its helpers by a helper, their atomic updates%
+To handle the external linearization of an MCAS operation and its helpers by a helper, their atomic updates%
 \footnote{
 In \Iris, an \emph{atomic update} is a resource that materializes a linearization point.
 \Citet{DBLP:journals/pacmpl/MulderK23} provide a good description.
@@ -72,17 +70,15 @@ In \Iris, an \emph{atomic update} is a resource that materializes a linearizatio
 are stored into the MCAS invariant.
 At the linearization point, the winning helper triggers all the atomic updates and puts them back into the invariant to be retrieved later by their respective owner.
 
-\paragraph{Global prophecy variable.}
+\paragraph{Global prophecy variable}
 
-To handle future-dependent linearization, we predict both the winner and the outcome of an MCAS operation through a shared prophecy variable.
+To handle future-dependent linearization, we predict both the winner and the outcome of an MCAS operation through a \emph{shared prophecy variable}~\citep{DBLP:journals/pacmpl/JungLPRTDJ20}.
 To distinguish the winner, we use the same trick as \citet{DBLP:journals/pacmpl/JungLPRTDJ20} in their proof of RCDSS: each MCAS participant is assigned a unique physical identifier (implemented using a prophecy variable) that is part of the prediction.
 
 \paragraph{Local prophecy variable.}
 
 For subtle reasons related to the semantics of physical equality~\citep{DBLP:journals/pacmpl/AllainS26}, we also need to introduce a local prophecy variable in \c{mcas}.
 Essentially, the problem is that we cannot predict the outcome of physical equality in advance just by looking at the values; in other words, equality in \Rocq does not imply physical equality in \OCaml.
-
-% generative constructors
 
 \paragraph{MCAS history.}
 
