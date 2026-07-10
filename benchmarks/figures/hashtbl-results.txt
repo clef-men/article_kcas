@@ -1,0 +1,180 @@
+
+Results produced on Gabriel's machine with OCaml 5.5+flambda.
+
+
+
+## Kcas_data
+
+$ dune exec -- ./main.exe -budget 1 -brief "Kcas_data Hashtbl"
+
+Kcas_data Hashtbl:                    
+  operations over time/1 worker, 10% reads:
+    5.43 M/s
+  operations over time/1 worker, 50% reads:
+    6.78 M/s
+  operations over time/1 worker, 90% reads:
+    16.43 M/s
+
+  operations over time/2 workers, 10% reads:
+    9.71 M/s
+  operations over time/2 workers, 50% reads:
+    11.79 M/s
+  operations over time/2 workers, 90% reads:
+    25.45 M/s
+
+  operations over time/4 workers, 10% reads:
+    18.54 M/s
+  operations over time/4 workers, 50% reads:
+    21.38 M/s
+  operations over time/4 workers, 90% reads:
+    47.57 M/s
+
+  operations over time/8 workers, 10% reads:
+    29.55 M/s
+  operations over time/8 workers, 50% reads:
+    35.03 M/s
+  operations over time/8 workers, 90% reads:
+    70.86 M/s
+
+  time per operation/1 worker, 10% reads:
+    184.30 ns
+  time per operation/1 worker, 50% reads:
+    147.50 ns
+  time per operation/1 worker, 90% reads:
+    60.85 ns
+  time per operation/2 workers, 10% reads:
+    206.04 ns
+  time per operation/2 workers, 50% reads:
+    169.64 ns
+  time per operation/2 workers, 90% reads:
+    78.60 ns
+  time per operation/4 workers, 10% reads:
+    215.73 ns
+  time per operation/4 workers, 50% reads:
+    187.05 ns
+  time per operation/4 workers, 90% reads:
+    84.08 ns
+  time per operation/8 workers, 10% reads:
+    270.77 ns
+  time per operation/8 workers, 50% reads:
+    228.39 ns
+  time per operation/8 workers, 90% reads:
+    112.91 ns
+
+
+## Saturn
+
+$ dune exec -- ./main.exe -budget 1 -brief "Saturn Hashtbl"
+
+Saturn Hashtbl:                      
+  operations over time/1 worker, 10% reads:
+    16.63 M/s
+  operations over time/1 worker, 50% reads:
+    18.12 M/s
+  operations over time/1 worker, 90% reads:
+    30.94 M/s
+
+  operations over time/2 workers, 10% reads:
+    24.78 M/s
+  operations over time/2 workers, 50% reads:
+    25.85 M/s
+  operations over time/2 workers, 90% reads:
+    42.73 M/s
+
+  operations over time/4 workers, 10% reads:
+    38.18 M/s
+  operations over time/4 workers, 50% reads:
+    40.07 M/s
+  operations over time/4 workers, 90% reads:
+    74.87 M/s
+
+  operations over time/8 workers, 10% reads:
+    60.24 M/s
+  operations over time/8 workers, 50% reads:
+    63.26 M/s
+  operations over time/8 workers, 90% reads:
+    115.37 M/s
+
+  time per operation/1 worker, 10% reads:
+    60.12 ns
+  time per operation/1 worker, 50% reads:
+    55.19 ns
+  time per operation/1 worker, 90% reads:
+    32.32 ns
+  time per operation/2 workers, 10% reads:
+    80.70 ns
+  time per operation/2 workers, 50% reads:
+    77.36 ns
+  time per operation/2 workers, 90% reads:
+    46.80 ns
+  time per operation/4 workers, 10% reads:
+    104.78 ns
+  time per operation/4 workers, 50% reads:
+    99.97 ns
+  time per operation/4 workers, 90% reads:
+    53.42 ns
+  time per operation/8 workers, 10% reads:
+    132.81 ns
+  time per operation/8 workers, 50% reads:
+    126.46 ns
+  time per operation/8 workers, 90% reads:
+    69.34 ns
+
+
+## Stdlib
+
+$ dune exec -- ./main.exe -budget 1 -brief "Stdlib Hashtbl"
+
+Stdlib Hashtbl:                      
+  operations over time/1 worker, 10% reads:
+    14.48 M/s
+  operations over time/1 worker, 50% reads:
+    11.21 M/s
+  operations over time/1 worker, 90% reads:
+    9.85 M/s
+
+  operations over time/2 workers, 10% reads:
+    3.30 M/s
+  operations over time/2 workers, 50% reads:
+    2.77 M/s
+  operations over time/2 workers, 90% reads:
+    2.59 M/s
+
+  operations over time/4 workers, 10% reads:
+    3.69 M/s
+  operations over time/4 workers, 50% reads:
+    3.19 M/s
+  operations over time/4 workers, 90% reads:
+    3.64 M/s
+
+  operations over time/8 workers, 10% reads:
+    2.92 M/s
+  operations over time/8 workers, 50% reads:
+    2.49 M/s
+  operations over time/8 workers, 90% reads:
+    2.51 M/s
+
+  time per operation/1 worker, 10% reads:
+    69.05 ns
+  time per operation/1 worker, 50% reads:
+    89.22 ns
+  time per operation/1 worker, 90% reads:
+    101.54 ns
+  time per operation/2 workers, 10% reads:
+    606.67 ns
+  time per operation/2 workers, 50% reads:
+    721.18 ns
+  time per operation/2 workers, 90% reads:
+    770.73 ns
+  time per operation/4 workers, 10% reads:
+    1084.90 ns
+  time per operation/4 workers, 50% reads:
+    1253.07 ns
+  time per operation/4 workers, 90% reads:
+    1098.46 ns
+  time per operation/8 workers, 10% reads:
+    2735.07 ns
+  time per operation/8 workers, 50% reads:
+    3206.54 ns
+  time per operation/8 workers, 90% reads:
+    3189.50 ns

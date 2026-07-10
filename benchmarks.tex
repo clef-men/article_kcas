@@ -278,29 +278,32 @@ Pushers & Poppers & \Kcas (M op/s) & Saturn (M op/s) \\
 
 We compare the hash table of \KcasData against the sequential
 implementation provided by the OCaml standard library, protected by
-a global mutex. The hash table of \KcasData has been heavily
+a global mutex, and against the atomic implementation provided by
+\Saturn. The hash table of \KcasData and \Saturn have been heavily
 micro-optimized, whereas the implementation of the standard library is
 reasonable but simpler and less micro-optimized.
 
 \begin{center}
 \begin{tabular}{cccc}
 \hline
-Domains & Read ratio & \Kcas (M op/s) & Stdlib+Mutex (M op/s) \\
+Domains & Read ratio & \Kcas (M op/s) & \Saturn (M op/s) & Stdlib+Mutex (M op/s) \\
 \hline
-1 & 90\% & 35.4        & \win{38.3} \\
-2 & 90\% & \win{62.0}  & 16.9 \\
-4 & 90\% & \win{108.7} & 14.5 \\
-1 & 10\% & 10.4        & \win{37.9} \\
-2 & 10\% & \win{19.0}  & 14.9 \\
-4 & 10\% & \win{31.1}  & 11.7 \\
+1 & 90\% & 16.4        & \win{30.9}     & 9.9 \\
+2 & 90\% & 25.5        & \win{42.7}     & 2.6 \\
+4 & 90\% & 47.6        & \win{74.9}     & 3.6 \\
+8 & 90\% & 70.9        & \win{115.4}    & 2.5 \\
+1 & 10\% & 5.4         & \win{16.6}     & 14.5 \\
+2 & 10\% & 9.7         & \win{24.8}     & 3.3 \\
+4 & 10\% & 18.5        & \win{38.2}     & 3.7 \\
+8 & 10\% & 29.6        & \win{60.2}     & 2.9 \\
 \hline
 \end{tabular}
 \end{center}
 
-The results demonstrate that the \KcasData implementation offers good
-scalability: it is already faster than the standard library for two
-domains. The book-keeping overhead of \Kcas is significant in the
-single-domain case. For read-dominated workflows, it is compensated by
-the \KcasData micro-optimizations; for write-dominated workflows
-(only 10\% of read-only operations), \KcasData is 3.6x slower on
-a single domain.
+The results show that \KcasData scales better than \Saturn, but that
+it has worse constant factors: it is about 2$\times$ slower overall,
+which we see as the price of its a more composable/expressive
+programming model. Both libraries are much faster than the
+not-so-optimized mutex-protected sequential hashtable of the \OCaml
+standard library -- except \KcasData in single-domain write-dominated
+workloads.
