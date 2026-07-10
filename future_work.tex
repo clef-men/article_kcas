@@ -23,5 +23,5 @@ On success, $\c{cas}\ \zooLoc{}s\ \v{befores}\ \v{afters}$ would release the vie
 We would like to extend the verification to the full \Kcas library, including its transactional API.
 This is challenging for two reasons.
 (1) The real implementation is even more complex: internally, CAS operations are stored in a splay tree rather than a list; the MCAS algorithm traverses the tree in a depth-first manner.
-(2) Specifying transactions in a composable way appears to be non-trivial; we anticipate that it will require several layers of specifications.
+(2) Specifying transactions in a composable way appears to be non-trivial; we anticipate that it will require several levels of specifications.
 That being said, the implementation is relatively short (approximatively one thousand lines of code), so it should be feasible in practice.
