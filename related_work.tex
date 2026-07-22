@@ -33,14 +33,14 @@ The implementations closest to our work are GHC's STM for \Haskell, and \Scala's
 \paragraph{Read skews}
 
 It is entirely fair to ask whether it is acceptable for an STM mechanism to allow read skew.
-A candidate correctness criterion for transactional memory called ''opacity``, introduced in \citet*{DBLP:conf/ppopp/GuerraouiK08}, does not allow it.
-The trade-off is that the known software techniques to provide opacity tend to introduce a global sequential bottleneck, such as a global transaction version number accessed by every transaction, that can limit scalability especially when transactions are relatively short, which is usually the case. For example, TL2~\citep*{DBLP:conf/wdag/DiceSS06} uses one lock per location, acquiring locks during transaction to prevent read skew, but the overhead is substantial.
+A candidate correctness criterion for transactional memory called ''opacity``, introduced in \citet{DBLP:conf/ppopp/GuerraouiK08}, does not allow it.
+The trade-off is that the known software techniques to provide opacity tend to introduce a global sequential bottleneck, such as a global transaction version number accessed by every transaction, that can limit scalability especially when transactions are relatively short, which is usually the case. For example, TL2~\citep{DBLP:conf/wdag/DiceSS06} uses one lock per location, acquiring locks during transaction to prevent read skew, but the overhead is substantial.
 
 At the time of writing this there are several STM implementations that do not provide opacity.
 The current \Haskell STM implementation, for example, allows similar read skew.
 In \Haskell, however, STM is implemented at the runtime level and transactions are guaranteed to be pure by the type system.
 This allows the \Haskell STM runtime to validate transactions when switching threads.
-Nevertheless there have been experiments to replace the Haskell STM using algorithms that provide opacity as described in \citet*{DBLP:conf/haskell/LeYF16}, for example.
+Nevertheless there have been experiments to replace the Haskell STM using algorithms that provide opacity as described in \citet{DBLP:conf/haskell/LeYF16}, for example.
 The \Scala \ZIO STM also allows read skew.
 In his talk Transactional Memory in Practice, Brett Hall describes their experience in using a STM in \Cpp that also allows read skew.
 
