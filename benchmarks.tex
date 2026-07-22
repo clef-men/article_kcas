@@ -139,7 +139,7 @@ end
 
 module Cache : sig
   type 'a t = {
-    f : int -> 'a;  
+    f : int -> 'a;
     params : cache_params;
     cache : ('a * int Dllist.node) option Kcas.Loc.t array;
     entries : int Dllist.t;
@@ -280,7 +280,7 @@ Performance is measured in mega-operations per second (higher is better), with 1
 
 \subsubsection{Concurrent queues}
 
-\Saturn uses a Michael-Scott queue \citep*{TODO}, which is reminiscent of the purely-functional implementation of queues with two lists/stacks. \KcasData uses a specialized design with three queues, designed to enable helping: when the ``front'' list from which elements are popped becomes empty, we move the ``back'' list into which elements are pushed into a ``middle'' list, and concurrent accessors collaborate to reverse it into the ``front''.
+\Saturn uses a Michael-Scott queue\citep*{DBLP:conf/podc/MichaelS96}, which is reminiscent of the purely-functional implementation of queues with two lists/stacks. \KcasData uses a specialized design with three queues, designed to enable helping: when the ``front'' list from which elements are popped becomes empty, we move the ``back'' list into which elements are pushed into a ``middle'' list, and concurrent accessors collaborate to reverse it into the ``front''.
 
 \begin{center}
 \begin{tabular}{cccc}
