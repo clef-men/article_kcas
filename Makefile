@@ -3,14 +3,11 @@ LATEXMK=latexmk \
   -pdf -pdflatex="pdflatex --shell-escape %O %S" \
   -bibtex
 
-all : main.pdf main-no-appendices.pdf
+all : main.pdf
 
-.PHONY: main.pdf main-no-appendices.pdf
+.PHONY: main.pdf
 main.pdf:
 	$(LATEXMK) main.tex
-
-main-no-appendices.pdf:
-	$(LATEXMK) main-no-appendices.tex
 
 .PHONY : watch
 watch :
